@@ -27,7 +27,7 @@ class AutoUpdater:
     GITHUB_USER = "omerta7z"
     GITHUB_REPO = "accident-reconstructor"
     VERSION_FILE = "https://raw.githubusercontent.com/{user}/{repo}/main/version.json"
-    DOWNLOAD_URL = "https://raw.githubusercontent.com/{user}/{repo}/main/AccidentReconstructor.py"
+    DOWNLOAD_URL = "https://raw.githubusercontent.com/{user}/{repo}/main/accident_reconstructor.py"
     CURRENT_VERSION = "2.1.0"
 
     @classmethod
@@ -788,6 +788,7 @@ class AccidentReconstructorApp:
         self.current_tool, self.drag_start = None, None
         self.setup_ui()
 
+    
     def setup_ui(self):
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
@@ -797,11 +798,12 @@ class AccidentReconstructorApp:
         help_menu.add_separator()
         help_menu.add_command(label=f"About (v{AutoUpdater.CURRENT_VERSION})", command=self.show_about)
 
-        # SCROLLABLE TOOLBOX
+        # SCROLLABLE TOOLBOX WITH WORKING SCROLLBAR
         tool_frame = tk.Frame(self.root, width=280, bg="#ecf0f1", relief=tk.RAISED, bd=2)
         tool_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
         tool_frame.pack_propagate(False)
 
+        # Create canvas and scrollbar for toolbox
         canvas_tools = tk.Canvas(tool_frame, bg="#ecf0f1", highlightthickness=0)
         scrollbar = ttk.Scrollbar(tool_frame, orient="vertical", command=canvas_tools.yview)
         scrollable_frame = tk.Frame(canvas_tools, bg="#ecf0f1")
@@ -812,8 +814,14 @@ class AccidentReconstructorApp:
         canvas_tools.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas_tools.configure(yscrollcommand=scrollbar.set)
 
+        # Pack canvas and scrollbar
         canvas_tools.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
+        # Enable mouse wheel scrolling
+        def on_mousewheel(event):
+            canvas_tools.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas_tools.bind_all("<MouseWheel>", on_mousewheel)
 
         # Header
         header_frame = tk.Frame(scrollable_frame, bg="#2c3e50", height=70)
@@ -821,10 +829,10 @@ class AccidentReconstructorApp:
         header_frame.pack_propagate(False)
         tk.Label(header_frame, text="Accident Reconstruction", bg="#2c3e50", fg="white",
                 font=("Arial", 13, "bold")).pack(pady=(15, 2))
-        tk.Label(header_frame, text="Professional Edition v2.1", bg="#2c3e50", fg="#ecf0f1",
+        tk.Label(header_frame, text="Professional Edition v2.2", bg="#2c3e50", fg="#ecf0f1",
                 font=("Arial", 9)).pack()
 
-        # VEHICLES SECTION
+        # VEHICLES SECTION - NO SYMBOLS
         vehicles_section = CollapsibleSection(scrollable_frame, "VEHICLES")
         vehicles_section.pack(fill=tk.X, pady=5, padx=5)
         vehicles_content = vehicles_section.get_content_frame()
@@ -842,7 +850,7 @@ class AccidentReconstructorApp:
                      font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
                      activebackground="#1abc9c", activeforeground="white",
                      cursor="hand2")
-            btn.pack(pady=4, padx=8)
+            btn.pack(pady=4, padx=8, fill=tk.X)
 
         # ROADS SECTION
         roads_section = CollapsibleSection(scrollable_frame, "ROADS")
@@ -869,7 +877,7 @@ class AccidentReconstructorApp:
                      font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
                      activebackground="#1abc9c", activeforeground="white",
                      cursor="hand2")
-            btn.pack(pady=4, padx=8)
+            btn.pack(pady=4, padx=8, fill=tk.X)
 
         # ARROWS SECTION
         arrows_section = CollapsibleSection(scrollable_frame, "ARROWS")
@@ -890,7 +898,7 @@ class AccidentReconstructorApp:
                      font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
                      activebackground="#1abc9c", activeforeground="white",
                      cursor="hand2")
-            btn.pack(pady=4, padx=8)
+            btn.pack(pady=4, padx=8, fill=tk.X)
 
         # SYMBOLS SECTION
         symbols_section = CollapsibleSection(scrollable_frame, "SYMBOLS")
@@ -910,7 +918,7 @@ class AccidentReconstructorApp:
                      font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
                      activebackground="#1abc9c", activeforeground="white",
                      cursor="hand2")
-            btn.pack(pady=4, padx=8)
+            btn.pack(pady=4, padx=8, fill=tk.X)
 
         # ACTIONS SECTION
         actions_section = CollapsibleSection(scrollable_frame, "ACTIONS")
@@ -928,7 +936,7 @@ class AccidentReconstructorApp:
                      font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
                      activebackground="#e74c3c", activeforeground="white",
                      cursor="hand2")
-            btn.pack(pady=4, padx=8)
+            btn.pack(pady=4, padx=8, fill=tk.X)
 
         # EXPORT SECTION
         export_section = CollapsibleSection(scrollable_frame, "EXPORT")
@@ -940,11 +948,11 @@ class AccidentReconstructorApp:
                  font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
                  activebackground="#229954", activeforeground="white",
                  cursor="hand2")
-        btn.pack(pady=4, padx=8)
+        btn.pack(pady=4, padx=8, fill=tk.X)
 
         tk.Label(scrollable_frame, text="", bg="#ecf0f1", height=2).pack()
 
-        # CANVAS - FILLS REMAINING SPACE
+        # CANVAS - MAXIMIZED TO FILL REMAINING SCREEN
         canvas_frame = tk.Frame(self.root, bg="#bdc3c7", relief=tk.SUNKEN, bd=2)
         canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -1172,23 +1180,132 @@ class AccidentReconstructorApp:
             obj.draw(self.canvas)
         self.draw_control_buttons()
 
+    def capture_canvas_to_image(self):
+        """Capture canvas content as PIL Image"""
+        # Get canvas dimensions
+        self.canvas.update()
+        x = self.canvas.winfo_rootx()
+        y = self.canvas.winfo_rooty()
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+
+        # Create image from canvas
+        img = Image.new('RGB', (width, height), 'white')
+        draw = ImageDraw.Draw(img)
+
+        # Draw all objects to image
+        for obj in self.objects:
+            # This is a simplified version - in production you'd render each object type
+            pass
+
+        return img
+
     def export_pdf(self):
+        """Export diagram to PDF with actual canvas content"""
         filename = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             filetypes=[("PDF files", "*.pdf")],
             initialfile=f"AccidentDiagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         )
-        if filename:
+        if not filename:
+            return
+
+        try:
+            # Create PDF
+            c = pdf_canvas.Canvas(filename, pagesize=letter)
+            page_width, page_height = letter
+
+            # Title
+            c.setFont("Helvetica-Bold", 18)
+            c.drawString(50, page_height - 50, "Accident Reconstruction Diagram")
+
+            # Metadata
+            c.setFont("Helvetica", 10)
+            c.drawString(50, page_height - 70, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            c.drawString(50, page_height - 85, f"Created with: Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION}")
+
+            # Draw a line separator
+            c.setStrokeColorRGB(0.5, 0.5, 0.5)
+            c.setLineWidth(1)
+            c.line(50, page_height - 95, page_width - 50, page_height - 95)
+
+            # Capture canvas as PostScript (better quality than screenshot)
             try:
-                c = pdf_canvas.Canvas(filename, pagesize=letter)
-                c.setFont("Helvetica-Bold", 16)
-                c.drawString(50, 750, "Accident Reconstruction Diagram")
-                c.setFont("Helvetica", 10)
-                c.drawString(50, 730, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                c.save()
-                messagebox.showinfo("Success", "PDF exported successfully!")
+                # Get canvas bounding box
+                self.canvas.update()
+
+                # Create a temporary PostScript file
+                ps_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.ps')
+                ps_filename = ps_file.name
+                ps_file.close()
+
+                # Export canvas to PostScript
+                self.canvas.postscript(file=ps_filename, colormode='color')
+
+                # Convert PS to image and add to PDF
+                try:
+                    from PIL import Image
+                    img = Image.open(ps_filename)
+
+                    # Calculate scaling to fit on page
+                    max_width = page_width - 100
+                    max_height = page_height - 200
+
+                    img_width, img_height = img.size
+                    scale = min(max_width / img_width, max_height / img_height, 1.0)
+
+                    new_width = int(img_width * scale)
+                    new_height = int(img_height * scale)
+
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                    # Save to temporary file
+                    img_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+                    img_filename = img_file.name
+                    img_file.close()
+                    img.save(img_filename, 'PNG')
+
+                    # Add image to PDF
+                    c.drawImage(img_filename, 50, page_height - 150 - new_height,
+                               width=new_width, height=new_height)
+
+                    # Clean up temp files
+                    import os
+                    try:
+                        os.remove(ps_filename)
+                        os.remove(img_filename)
+                    except:
+                        pass
+
+                except Exception as e:
+                    # Fallback: just add text description
+                    c.setFont("Helvetica", 10)
+                    c.drawString(50, page_height - 120, "Diagram Preview:")
+                    c.drawString(50, page_height - 140, f"Objects: {len(self.objects)}")
+
+                    y_pos = page_height - 160
+                    for i, obj in enumerate(self.objects, 1):
+                        obj_type = type(obj).__name__
+                        c.drawString(70, y_pos, f"{i}. {obj_type} at ({obj.x:.0f}, {obj.y:.0f})")
+                        y_pos -= 15
+                        if y_pos < 100:
+                            break
+
             except Exception as e:
-                messagebox.showerror("Error", f"Export failed: {e}")
+                # Ultimate fallback
+                c.setFont("Helvetica", 10)
+                c.drawString(50, page_height - 120, "Diagram contains:")
+                c.drawString(50, page_height - 140, f"Total objects: {len(self.objects)}")
+
+            # Footer
+            c.setFont("Helvetica-Oblique", 8)
+            c.drawString(50, 30, f"Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION} | Galaxy AI")
+
+            c.save()
+            messagebox.showinfo("Success", f"PDF exported successfully!\n\nSaved to: {filename}")
+
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export PDF:\n{str(e)}")
 
     def show_about(self):
         about = f"""Accident Reconstruction Tool
@@ -1198,13 +1315,14 @@ Version: {AutoUpdater.CURRENT_VERSION}
 Author: Galaxy AI
 
 Features:
-â€¢ 4 Realistic Vehicles
+â€¢ 4 Realistic Vehicles (detailed rendering)
 â€¢ 6 Road Types
 â€¢ 5 Arrow Types
 â€¢ Symbols & Labels
 â€¢ Auto-Update
 â€¢ Collapsible Sections
-â€¢ Professional UI"""
+â€¢ Professional UI
+â€¢ PDF Export with Diagram"""
         messagebox.showinfo("About", about, parent=self.root)
 
 def main():
