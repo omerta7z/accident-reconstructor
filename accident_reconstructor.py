@@ -27,7 +27,7 @@ import os
 class AutoUpdater:
     GITHUB_USER = "omerta7z"
     GITHUB_REPO = "accident-reconstructor"
-    CURRENT_VERSION = "2.6.0"
+    CURRENT_VERSION = "2.5.0"
 
     @classmethod
     def get_version_url(cls):
@@ -41,7 +41,7 @@ class AutoUpdater:
     def check_for_updates(cls):
         try:
             req = urllib.request.Request(cls.get_version_url())
-            req.add_header('User-Agent', 'AccidentReconstructor/2.6.0')
+            req.add_header('User-Agent', 'AccidentReconstructor/2.5.0')
             with urllib.request.urlopen(req, timeout=10) as response:
                 version_data = json.loads(response.read().decode('utf-8'))
             latest_version = version_data.get("version", "0.0.0")
