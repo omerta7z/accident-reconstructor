@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
 """
-Accident Reconstruction Diagram Tool - COMPLETE VERSION
-========================================================
-Professional accident reconstruction software with auto-update
-
-Version: 2.1.0
+Accident Reconstruction Diagram Tool v2.1.0
+Professional Edition with Auto-Update
 Author: Galaxy AI
-Date: February 2026
 """
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 import math
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas as pdf_canvas
-from reportlab.lib.utils import ImageReader
-import io
 from datetime import datetime
 import urllib.request
 import json
@@ -25,14 +19,11 @@ import shutil
 import sys
 import subprocess
 
-
 # ============================================================================
 # AUTO-UPDATE FUNCTIONALITY
 # ============================================================================
 
 class AutoUpdater:
-    """Auto-update functionality"""
-
     GITHUB_USER = "omerta7z"
     GITHUB_REPO = "accident-reconstructor"
     VERSION_FILE = "https://raw.githubusercontent.com/{user}/{repo}/main/version.json"
@@ -87,7 +78,6 @@ class AutoUpdater:
             return True
         except:
             return False
-
 
 class UpdateDialog:
     def __init__(self, parent, version, changelog):
@@ -172,7 +162,6 @@ class UpdateDialog:
     def update_later(self):
         self.dialog.destroy()
 
-
 def check_for_updates_on_startup(root):
     try:
         has_update, version, changelog = AutoUpdater.check_for_updates()
@@ -180,7 +169,6 @@ def check_for_updates_on_startup(root):
             UpdateDialog(root, version, changelog)
     except:
         pass
-
 
 def manual_update_check(root):
     try:
@@ -194,9 +182,8 @@ def manual_update_check(root):
     except Exception as e:
         messagebox.showerror("Update Check Failed", f"Failed: {e}", parent=root)
 
-
 # ============================================================================
-# COLLAPSIBLE SECTION WIDGET
+# COLLAPSIBLE SECTION
 # ============================================================================
 
 class CollapsibleSection(tk.Frame):
@@ -205,24 +192,21 @@ class CollapsibleSection(tk.Frame):
         self.bg_color = bg_color
         self.is_expanded = True
 
-        # Header frame
-        self.header = tk.Frame(self, bg="#34495e", cursor="hand2")
+        self.header = tk.Frame(self, bg="#34495e", cursor="hand2", height=35)
         self.header.pack(fill=tk.X, pady=(0, 2))
+        self.header.pack_propagate(False)
 
-        # Arrow and title
         self.arrow_label = tk.Label(self.header, text="â–¼", bg="#34495e", fg="white",
                                     font=("Arial", 10, "bold"), width=2)
-        self.arrow_label.pack(side=tk.LEFT, padx=5)
+        self.arrow_label.pack(side=tk.LEFT, padx=8)
 
         self.title_label = tk.Label(self.header, text=title, bg="#34495e", fg="white",
                                     font=("Arial", 10, "bold"), anchor="w")
-        self.title_label.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=5)
+        self.title_label.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=8)
 
-        # Content frame
         self.content = tk.Frame(self, bg=bg_color)
-        self.content.pack(fill=tk.BOTH, expand=True)
+        self.content.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
 
-        # Bind click events
         self.header.bind("<Button-1>", self.toggle)
         self.arrow_label.bind("<Button-1>", self.toggle)
         self.title_label.bind("<Button-1>", self.toggle)
@@ -233,13 +217,12 @@ class CollapsibleSection(tk.Frame):
             self.arrow_label.config(text="â–¶")
             self.is_expanded = False
         else:
-            self.content.pack(fill=tk.BOTH, expand=True)
+            self.content.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
             self.arrow_label.config(text="â–¼")
             self.is_expanded = True
 
     def get_content_frame(self):
         return self.content
-
 
 # ============================================================================
 # DIAGRAM OBJECTS
@@ -279,7 +262,6 @@ class DiagramObject:
         self.curve_amount = max(self.curve_amount - 0.2, -2.0)
     def get_bounds(self):
         return (self.x - 50, self.y - 50, self.x + 50, self.y + 50)
-
 
 class Vehicle(DiagramObject):
     def __init__(self, x, y, vehicle_type="car"):
@@ -329,7 +311,6 @@ class Vehicle(DiagramObject):
         hw = (self.base_width * self.scale * self.width_scale) / 2
         hh = (self.base_height * self.scale * self.height_scale) / 2
         return (self.x-hw-30, self.y-hh-30, self.x+hw+30, self.y+hh+30)
-
 
 class Road(DiagramObject):
     def __init__(self, x, y, road_type="2-Lane Road"):
@@ -388,7 +369,6 @@ class Road(DiagramObject):
         margin = 30
         return (self.x - length - margin, self.y - width - margin,
                 self.x + length + margin, self.y + width + margin)
-
 
 class CurvedRoad(DiagramObject):
     def __init__(self, x, y, road_type="2-Lane Road"):
@@ -466,7 +446,6 @@ class CurvedRoad(DiagramObject):
         return (self.x - length - margin, self.y - width - curve_offset - margin,
                 self.x + length + margin, self.y + width + curve_offset + margin)
 
-
 class Arrow(DiagramObject):
     def __init__(self, x, y):
         super().__init__(x, y)
@@ -498,7 +477,6 @@ class Arrow(DiagramObject):
         margin = 30
         return (self.x - margin, self.y - 20 * self.scale - margin,
                 self.x + length + margin, self.y + 20 * self.scale + margin)
-
 
 class TurnArrow(DiagramObject):
     def __init__(self, x, y, direction="left"):
@@ -552,7 +530,6 @@ class TurnArrow(DiagramObject):
         margin = 20
         return (self.x - size - margin, self.y - size - margin,
                 self.x + size + margin, self.y + size + margin)
-
 
 class CurveArrow(DiagramObject):
     def __init__(self, x, y, direction="left"):
@@ -613,7 +590,6 @@ class CurveArrow(DiagramObject):
         return (self.x - radius - margin, self.y - radius - margin,
                 self.x + radius + margin, self.y + radius + margin)
 
-
 class Tree(DiagramObject):
     def __init__(self, x, y):
         super().__init__(x, y)
@@ -638,7 +614,6 @@ class Tree(DiagramObject):
     def get_bounds(self):
         r = 30 * self.scale
         return (self.x-r-20, self.y-r-20, self.x+r+20, self.y+r+20)
-
 
 class Pedestrian(DiagramObject):
     def draw(self, canvas):
@@ -687,7 +662,6 @@ class Pedestrian(DiagramObject):
     def get_bounds(self):
         return (self.x-50, self.y-65, self.x+50, self.y+65)
 
-
 class TextLabel(DiagramObject):
     def __init__(self, x, y, text="Label"):
         super().__init__(x, y)
@@ -704,7 +678,6 @@ class TextLabel(DiagramObject):
     def get_bounds(self):
         w, h = len(self.text)*7*self.scale, 15*self.scale
         return (self.x-w-30, self.y-h-30, self.x+w+30, self.y+h+30)
-
 
 class Compass(DiagramObject):
     def __init__(self, x, y):
@@ -761,7 +734,6 @@ class Compass(DiagramObject):
         s = 40 * self.scale
         return (self.x-s-40, self.y-s-40, self.x+s+40, self.y+s+40)
 
-
 class ControlButton:
     def __init__(self, x, y, button_type, size=28):
         self.x, self.y, self.button_type, self.size = x, y, button_type, size
@@ -783,7 +755,6 @@ class ControlButton:
                                  fill=bg, outline="white", width=2, tags="control")
         self.canvas_items.append(item)
 
-        # Descriptive labels instead of symbols
         labels = {
             "rotate_cw": "R+",
             "rotate_ccw": "R-", 
@@ -804,7 +775,6 @@ class ControlButton:
     def contains(self, x, y):
         return math.sqrt((x-self.x)**2 + (y-self.y)**2) < self.size/2
 
-
 # ============================================================================
 # MAIN APPLICATION
 # ============================================================================
@@ -813,7 +783,435 @@ class AccidentReconstructorApp:
     def __init__(self, root):
         self.root = root
         self.root.title(f"Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION}")
-        self.root.geometry("1280x800")
+        self.root.geometry("1400x900")
         self.objects, self.selected_object, self.control_buttons = [], None, []
         self.current_tool, self.drag_start = None, None
         self.setup_ui()
+
+    def setup_ui(self):
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="Check for Updates", command=lambda: manual_update_check(self.root))
+        help_menu.add_separator()
+        help_menu.add_command(label=f"About (v{AutoUpdater.CURRENT_VERSION})", command=self.show_about)
+
+        # SCROLLABLE TOOLBOX
+        tool_frame = tk.Frame(self.root, width=280, bg="#ecf0f1", relief=tk.RAISED, bd=2)
+        tool_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
+        tool_frame.pack_propagate(False)
+
+        canvas_tools = tk.Canvas(tool_frame, bg="#ecf0f1", highlightthickness=0)
+        scrollbar = ttk.Scrollbar(tool_frame, orient="vertical", command=canvas_tools.yview)
+        scrollable_frame = tk.Frame(canvas_tools, bg="#ecf0f1")
+
+        scrollable_frame.bind("<Configure>",
+            lambda e: canvas_tools.configure(scrollregion=canvas_tools.bbox("all")))
+
+        canvas_tools.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_tools.configure(yscrollcommand=scrollbar.set)
+
+        canvas_tools.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Header
+        header_frame = tk.Frame(scrollable_frame, bg="#2c3e50", height=70)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        tk.Label(header_frame, text="Accident Reconstruction", bg="#2c3e50", fg="white",
+                font=("Arial", 13, "bold")).pack(pady=(15, 2))
+        tk.Label(header_frame, text="Professional Edition v2.1", bg="#2c3e50", fg="#ecf0f1",
+                font=("Arial", 9)).pack()
+
+        # VEHICLES SECTION
+        vehicles_section = CollapsibleSection(scrollable_frame, "VEHICLES")
+        vehicles_section.pack(fill=tk.X, pady=5, padx=5)
+        vehicles_content = vehicles_section.get_content_frame()
+
+        vehicles = [
+            ("Sedan", "car", "#34495e"),
+            ("Pickup Truck", "truck", "#34495e"),
+            ("18-Wheeler", "semi", "#2c3e50"),
+            ("Motorcycle", "motorcycle", "#7f8c8d")
+        ]
+
+        for text, tool, color in vehicles:
+            btn = tk.Button(vehicles_content, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=28, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
+                     activebackground="#1abc9c", activeforeground="white",
+                     cursor="hand2")
+            btn.pack(pady=4, padx=8)
+
+        # ROADS SECTION
+        roads_section = CollapsibleSection(scrollable_frame, "ROADS")
+        roads_section.pack(fill=tk.X, pady=5, padx=5)
+        roads_content = roads_section.get_content_frame()
+
+        tk.Label(roads_content, text="Road Type:", bg="#ecf0f1",
+                font=("Arial", 9, "bold")).pack(pady=(5, 3))
+        self.road_combo = ttk.Combobox(roads_content,
+                                       values=["2-Lane Road", "4-Lane Road",
+                                              "4-Lane Highway", "Intersection"],
+                                       state="readonly", width=26, font=("Arial", 9))
+        self.road_combo.set("2-Lane Road")
+        self.road_combo.pack(pady=5, padx=8)
+
+        roads = [
+            ("Straight Road", "road", "#5d6d7e"),
+            ("Curved Road", "curved_road", "#34495e")
+        ]
+
+        for text, tool, color in roads:
+            btn = tk.Button(roads_content, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=28, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
+                     activebackground="#1abc9c", activeforeground="white",
+                     cursor="hand2")
+            btn.pack(pady=4, padx=8)
+
+        # ARROWS SECTION
+        arrows_section = CollapsibleSection(scrollable_frame, "ARROWS")
+        arrows_section.pack(fill=tk.X, pady=5, padx=5)
+        arrows_content = arrows_section.get_content_frame()
+
+        arrows = [
+            ("Straight Arrow", "arrow", "#2c3e50"),
+            ("Left Turn Arrow", "turn_left", "#34495e"),
+            ("Right Turn Arrow", "turn_right", "#34495e"),
+            ("Left Curve Arrow", "curve_left", "#5d6d7e"),
+            ("Right Curve Arrow", "curve_right", "#5d6d7e")
+        ]
+
+        for text, tool, color in arrows:
+            btn = tk.Button(arrows_content, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=28, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
+                     activebackground="#1abc9c", activeforeground="white",
+                     cursor="hand2")
+            btn.pack(pady=4, padx=8)
+
+        # SYMBOLS SECTION
+        symbols_section = CollapsibleSection(scrollable_frame, "SYMBOLS")
+        symbols_section.pack(fill=tk.X, pady=5, padx=5)
+        symbols_content = symbols_section.get_content_frame()
+
+        symbols = [
+            ("Tree", "tree", "#27ae60"),
+            ("Pedestrian", "pedestrian", "#95a5a6"),
+            ("Text Label", "text", "#8e44ad"),
+            ("Compass", "compass", "#16a085")
+        ]
+
+        for text, tool, color in symbols:
+            btn = tk.Button(symbols_content, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=28, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
+                     activebackground="#1abc9c", activeforeground="white",
+                     cursor="hand2")
+            btn.pack(pady=4, padx=8)
+
+        # ACTIONS SECTION
+        actions_section = CollapsibleSection(scrollable_frame, "ACTIONS")
+        actions_section.pack(fill=tk.X, pady=5, padx=5)
+        actions_content = actions_section.get_content_frame()
+
+        actions = [
+            ("Delete Selected", self.delete_selected, "#c0392b"),
+            ("Clear All", self.clear_all, "#e74c3c")
+        ]
+
+        for text, command, color in actions:
+            btn = tk.Button(actions_content, text=text, command=command,
+                     width=28, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
+                     activebackground="#e74c3c", activeforeground="white",
+                     cursor="hand2")
+            btn.pack(pady=4, padx=8)
+
+        # EXPORT SECTION
+        export_section = CollapsibleSection(scrollable_frame, "EXPORT")
+        export_section.pack(fill=tk.X, pady=5, padx=5)
+        export_content = export_section.get_content_frame()
+
+        btn = tk.Button(export_content, text="Export to PDF", command=self.export_pdf,
+                 width=28, height=2, bg="#27ae60", fg="white",
+                 font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
+                 activebackground="#229954", activeforeground="white",
+                 cursor="hand2")
+        btn.pack(pady=4, padx=8)
+
+        tk.Label(scrollable_frame, text="", bg="#ecf0f1", height=2).pack()
+
+        # CANVAS - FILLS REMAINING SPACE
+        canvas_frame = tk.Frame(self.root, bg="#bdc3c7", relief=tk.SUNKEN, bd=2)
+        canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.canvas = tk.Canvas(canvas_frame, bg="white", highlightthickness=0)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
+
+        # Events
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
+        self.canvas.bind("<Button-3>", self.on_right_click)
+        self.root.bind("<Delete>", lambda e: self.delete_selected())
+        self.root.bind("<r>", lambda e: self.rotate_selected())
+        self.root.bind("<R>", lambda e: self.rotate_selected(-15))
+
+        # Status bar
+        status_frame = tk.Frame(self.root, bg="#34495e", height=35)
+        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        status_frame.pack_propagate(False)
+
+        self.status_label = tk.Label(status_frame,
+                                     text="Ready | Select a tool and click on canvas to place objects",
+                                     bd=0, anchor=tk.W, bg="#ecf0f1", fg="#2c3e50",
+                                     font=("Arial", 9), padx=10)
+        self.status_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+        legend_text = "Controls: R+ Rotate | + Size | W+ Width | H+ Height | C+ Curve | [R] Key | [Del] Delete"
+        hints_label = tk.Label(status_frame, text=legend_text,
+                              bg="#34495e", fg="white", font=("Arial", 8), padx=15)
+        hints_label.pack(side=tk.RIGHT, pady=2)
+
+    def set_tool(self, tool):
+        self.current_tool = tool
+        tool_names = {
+            "car": "Sedan", "truck": "Pickup Truck", "semi": "18-Wheeler",
+            "motorcycle": "Motorcycle", "pedestrian": "Pedestrian", "tree": "Tree",
+            "road": "Straight Road", "curved_road": "Curved Road",
+            "arrow": "Straight Arrow", "turn_left": "Left Turn Arrow",
+            "turn_right": "Right Turn Arrow", "curve_left": "Left Curve Arrow",
+            "curve_right": "Right Curve Arrow", "text": "Text Label", "compass": "Compass"
+        }
+        self.status_label.config(text=f"Tool: {tool_names.get(tool, tool)} - Click canvas to place")
+
+    def create_control_buttons(self):
+        self.control_buttons = []
+        if not self.selected_object:
+            return
+        x1, y1, x2, y2 = self.selected_object.get_bounds()
+        cx, cy = (x1+x2)/2, (y1+y2)/2
+        has_curve = isinstance(self.selected_object, (CurvedRoad, CurveArrow))
+
+        if has_curve:
+            self.control_buttons = [
+                ControlButton(cx, y1-20, "rotate_ccw"),
+                ControlButton(x2+20, cy-25, "width_up"),
+                ControlButton(x2+20, cy, "scale_up"),
+                ControlButton(x2+20, cy+25, "curve_up"),
+                ControlButton(cx+15, y2+20, "height_up"),
+                ControlButton(cx-15, y2+20, "rotate_cw"),
+                ControlButton(x1-20, cy+25, "curve_down"),
+                ControlButton(x1-20, cy, "scale_down"),
+                ControlButton(x1-20, cy-25, "width_down"),
+                ControlButton(cx, y1-50, "height_down")
+            ]
+        else:
+            self.control_buttons = [
+                ControlButton(cx, y1-20, "rotate_ccw"),
+                ControlButton(x2+20, cy-15, "width_up"),
+                ControlButton(x2+20, cy+15, "scale_up"),
+                ControlButton(cx+15, y2+20, "height_up"),
+                ControlButton(cx-15, y2+20, "rotate_cw"),
+                ControlButton(x1-20, cy+15, "scale_down"),
+                ControlButton(x1-20, cy-15, "width_down"),
+                ControlButton(cx, y1-50, "height_down")
+            ]
+
+    def draw_control_buttons(self):
+        for button in self.control_buttons:
+            button.draw(self.canvas)
+
+    def on_canvas_click(self, event):
+        for button in self.control_buttons:
+            if button.contains(event.x, event.y):
+                self.handle_control_button(button.button_type)
+                return
+        clicked_obj = None
+        for obj in reversed(self.objects):
+            if obj.contains(event.x, event.y):
+                clicked_obj = obj
+                break
+        if clicked_obj:
+            if self.selected_object:
+                self.selected_object.selected = False
+            self.selected_object = clicked_obj
+            self.selected_object.selected = True
+            self.drag_start = (event.x, event.y)
+            self.create_control_buttons()
+            self.redraw()
+            self.update_status()
+        elif self.current_tool:
+            self.add_object(event.x, event.y)
+            self.current_tool = None
+            self.status_label.config(text="Ready")
+        else:
+            if self.selected_object:
+                self.selected_object.selected = False
+                self.selected_object = None
+                self.control_buttons = []
+                self.redraw()
+                self.status_label.config(text="Ready")
+
+    def handle_control_button(self, button_type):
+        if not self.selected_object:
+            return
+        actions = {
+            "rotate_cw": lambda: self.selected_object.rotate(15),
+            "rotate_ccw": lambda: self.selected_object.rotate(-15),
+            "scale_up": lambda: self.selected_object.scale_up(),
+            "scale_down": lambda: self.selected_object.scale_down(),
+            "width_up": lambda: self.selected_object.width_up(),
+            "width_down": lambda: self.selected_object.width_down(),
+            "height_up": lambda: self.selected_object.height_up(),
+            "height_down": lambda: self.selected_object.height_down(),
+            "curve_up": lambda: self.selected_object.curve_up(),
+            "curve_down": lambda: self.selected_object.curve_down()
+        }
+        if button_type in actions:
+            actions[button_type]()
+            self.create_control_buttons()
+            self.redraw()
+            self.update_status()
+
+    def on_canvas_drag(self, event):
+        if self.selected_object and self.drag_start:
+            dx, dy = event.x - self.drag_start[0], event.y - self.drag_start[1]
+            self.selected_object.move(dx, dy)
+            self.drag_start = (event.x, event.y)
+            self.create_control_buttons()
+            self.redraw()
+
+    def on_canvas_release(self, event):
+        self.drag_start = None
+
+    def on_right_click(self, event):
+        if self.selected_object:
+            self.selected_object.rotate(15)
+            self.create_control_buttons()
+            self.redraw()
+            self.update_status()
+
+    def rotate_selected(self, angle=15):
+        if self.selected_object:
+            self.selected_object.rotate(angle)
+            self.create_control_buttons()
+            self.redraw()
+            self.update_status()
+
+    def update_status(self):
+        if self.selected_object:
+            obj_type = type(self.selected_object).__name__
+            status_text = f"{obj_type} | Rot: {self.selected_object.rotation:.0f}Â° | Scale: {self.selected_object.scale:.2f}x"
+            if hasattr(self.selected_object, 'curve_amount') and isinstance(self.selected_object, (CurvedRoad, CurveArrow)):
+                status_text += f" | Curve: {self.selected_object.curve_amount:.1f}"
+            self.status_label.config(text=status_text)
+
+    def add_object(self, x, y):
+        obj = None
+        if self.current_tool in ["car", "truck", "semi", "motorcycle"]:
+            obj = Vehicle(x, y, self.current_tool)
+        elif self.current_tool == "tree":
+            obj = Tree(x, y)
+        elif self.current_tool == "pedestrian":
+            obj = Pedestrian(x, y)
+        elif self.current_tool == "road":
+            obj = Road(x, y, self.road_combo.get())
+        elif self.current_tool == "curved_road":
+            obj = CurvedRoad(x, y, self.road_combo.get())
+        elif self.current_tool == "arrow":
+            obj = Arrow(x, y)
+        elif self.current_tool == "turn_left":
+            obj = TurnArrow(x, y, "left")
+        elif self.current_tool == "turn_right":
+            obj = TurnArrow(x, y, "right")
+        elif self.current_tool == "curve_left":
+            obj = CurveArrow(x, y, "left")
+        elif self.current_tool == "curve_right":
+            obj = CurveArrow(x, y, "right")
+        elif self.current_tool == "text":
+            text = simpledialog.askstring("Text Label", "Enter text:")
+            if text:
+                obj = TextLabel(x, y, text)
+        elif self.current_tool == "compass":
+            obj = Compass(x, y)
+
+        if obj:
+            self.objects.append(obj)
+            if self.selected_object:
+                self.selected_object.selected = False
+            self.selected_object = obj
+            obj.selected = True
+            self.create_control_buttons()
+            self.redraw()
+            self.update_status()
+
+    def delete_selected(self):
+        if self.selected_object:
+            self.objects.remove(self.selected_object)
+            self.selected_object = None
+            self.control_buttons = []
+            self.redraw()
+            self.status_label.config(text="Object deleted")
+
+    def clear_all(self):
+        if messagebox.askyesno("Clear All", "Clear all objects from the diagram?"):
+            self.objects.clear()
+            self.selected_object = None
+            self.control_buttons = []
+            self.redraw()
+            self.status_label.config(text="Diagram cleared")
+
+    def redraw(self):
+        self.canvas.delete("object")
+        self.canvas.delete("control")
+        for obj in self.objects:
+            obj.draw(self.canvas)
+        self.draw_control_buttons()
+
+    def export_pdf(self):
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            initialfile=f"AccidentDiagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+        if filename:
+            try:
+                c = pdf_canvas.Canvas(filename, pagesize=letter)
+                c.setFont("Helvetica-Bold", 16)
+                c.drawString(50, 750, "Accident Reconstruction Diagram")
+                c.setFont("Helvetica", 10)
+                c.drawString(50, 730, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                c.save()
+                messagebox.showinfo("Success", "PDF exported successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Export failed: {e}")
+
+    def show_about(self):
+        about = f"""Accident Reconstruction Tool
+Professional Edition
+
+Version: {AutoUpdater.CURRENT_VERSION}
+Author: Galaxy AI
+
+Features:
+â€¢ 4 Realistic Vehicles
+â€¢ 6 Road Types
+â€¢ 5 Arrow Types
+â€¢ Symbols & Labels
+â€¢ Auto-Update
+â€¢ Collapsible Sections
+â€¢ Professional UI"""
+        messagebox.showinfo("About", about, parent=self.root)
+
+def main():
+    root = tk.Tk()
+    app = AccidentReconstructorApp(root)
+    root.after(1000, lambda: check_for_updates_on_startup(root))
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
