@@ -34,10 +34,10 @@ class AutoUpdater:
     """Auto-update functionality"""
 
     # REPLACE WITH YOUR GITHUB INFO
-    GITHUB_USER = "your-username"
+    GITHUB_USER = "omerta7z"
     GITHUB_REPO = "accident-reconstructor"
     VERSION_FILE = "https://raw.githubusercontent.com/{user}/{repo}/main/version.json"
-    DOWNLOAD_URL = "https://raw.githubusercontent.com/{user}/{repo}/main/AccidentReconstructor.py"
+    DOWNLOAD_URL = "https://raw.githubusercontent.com/{user}/{repo}/main/accident_reconstructor.py"
 
     CURRENT_VERSION = "2.0.0"
 
