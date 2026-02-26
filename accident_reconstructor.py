@@ -41,7 +41,7 @@ class AutoUpdater:
     def check_for_updates(cls):
         try:
             req = urllib.request.Request(cls.get_version_url())
-            req.add_header('User-Agent', 'AccidentReconstructor/2.5.0')
+            req.add_header('User-Agent', 'AccidentReconstructor/2.6.0')
             with urllib.request.urlopen(req, timeout=10) as response:
                 version_data = json.loads(response.read().decode('utf-8'))
             latest_version = version_data.get("version", "0.0.0")
@@ -66,7 +66,7 @@ class AutoUpdater:
                     progress_callback(percent)
 
             req = urllib.request.Request(cls.get_download_url())
-            req.add_header('User-Agent', 'AccidentReconstructor/2.5.0')
+            req.add_header('User-Agent', 'AccidentReconstructor/2.6.0')
             urllib.request.urlretrieve(cls.get_download_url(), temp_path, reporthook=report_progress)
             return temp_path
         except:
