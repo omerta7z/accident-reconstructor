@@ -28,7 +28,7 @@ class AutoUpdater:
     GITHUB_REPO = "accident-reconstructor"
     VERSION_FILE = "https://raw.githubusercontent.com/{user}/{repo}/main/version.json"
     DOWNLOAD_URL = "https://raw.githubusercontent.com/{user}/{repo}/main/accident_reconstructor.py"
-    CURRENT_VERSION = "2.1.0"
+    CURRENT_VERSION = "2.3.0"
 
     @classmethod
     def check_for_updates(cls):
@@ -788,7 +788,6 @@ class AccidentReconstructorApp:
         self.current_tool, self.drag_start = None, None
         self.setup_ui()
 
-    
     def setup_ui(self):
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
@@ -798,12 +797,11 @@ class AccidentReconstructorApp:
         help_menu.add_separator()
         help_menu.add_command(label=f"About (v{AutoUpdater.CURRENT_VERSION})", command=self.show_about)
 
-        # SCROLLABLE TOOLBOX WITH WORKING SCROLLBAR
+        # SCROLLABLE TOOLBOX
         tool_frame = tk.Frame(self.root, width=280, bg="#ecf0f1", relief=tk.RAISED, bd=2)
         tool_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
         tool_frame.pack_propagate(False)
 
-        # Create canvas and scrollbar for toolbox
         canvas_tools = tk.Canvas(tool_frame, bg="#ecf0f1", highlightthickness=0)
         scrollbar = ttk.Scrollbar(tool_frame, orient="vertical", command=canvas_tools.yview)
         scrollable_frame = tk.Frame(canvas_tools, bg="#ecf0f1")
@@ -814,11 +812,9 @@ class AccidentReconstructorApp:
         canvas_tools.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas_tools.configure(yscrollcommand=scrollbar.set)
 
-        # Pack canvas and scrollbar
         canvas_tools.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Enable mouse wheel scrolling
         def on_mousewheel(event):
             canvas_tools.yview_scroll(int(-1*(event.delta/120)), "units")
         canvas_tools.bind_all("<MouseWheel>", on_mousewheel)
@@ -829,130 +825,85 @@ class AccidentReconstructorApp:
         header_frame.pack_propagate(False)
         tk.Label(header_frame, text="Accident Reconstruction", bg="#2c3e50", fg="white",
                 font=("Arial", 13, "bold")).pack(pady=(15, 2))
-        tk.Label(header_frame, text="Professional Edition v2.2", bg="#2c3e50", fg="#ecf0f1",
+        tk.Label(header_frame, text="Professional Edition v2.3", bg="#2c3e50", fg="#ecf0f1",
                 font=("Arial", 9)).pack()
 
-        # VEHICLES SECTION - NO SYMBOLS
+        # VEHICLES
         vehicles_section = CollapsibleSection(scrollable_frame, "VEHICLES")
         vehicles_section.pack(fill=tk.X, pady=5, padx=5)
         vehicles_content = vehicles_section.get_content_frame()
 
-        vehicles = [
-            ("Sedan", "car", "#34495e"),
-            ("Pickup Truck", "truck", "#34495e"),
-            ("18-Wheeler", "semi", "#2c3e50"),
-            ("Motorcycle", "motorcycle", "#7f8c8d")
-        ]
+        for text, tool, color in [("Sedan", "car", "#34495e"), ("Pickup Truck", "truck", "#34495e"),
+                                  ("18-Wheeler", "semi", "#2c3e50"), ("Motorcycle", "motorcycle", "#7f8c8d")]:
+            tk.Button(vehicles_content, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=28, height=2, bg=color, fg="white", font=("Arial", 9, "bold"),
+                     relief=tk.FLAT, bd=0, activebackground="#1abc9c", activeforeground="white",
+                     cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
 
-        for text, tool, color in vehicles:
-            btn = tk.Button(vehicles_content, text=text, command=lambda t=tool: self.set_tool(t),
-                     width=28, height=2, bg=color, fg="white",
-                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
-                     activebackground="#1abc9c", activeforeground="white",
-                     cursor="hand2")
-            btn.pack(pady=4, padx=8, fill=tk.X)
-
-        # ROADS SECTION
+        # ROADS
         roads_section = CollapsibleSection(scrollable_frame, "ROADS")
         roads_section.pack(fill=tk.X, pady=5, padx=5)
         roads_content = roads_section.get_content_frame()
 
-        tk.Label(roads_content, text="Road Type:", bg="#ecf0f1",
-                font=("Arial", 9, "bold")).pack(pady=(5, 3))
-        self.road_combo = ttk.Combobox(roads_content,
-                                       values=["2-Lane Road", "4-Lane Road",
-                                              "4-Lane Highway", "Intersection"],
-                                       state="readonly", width=26, font=("Arial", 9))
+        tk.Label(roads_content, text="Road Type:", bg="#ecf0f1", font=("Arial", 9, "bold")).pack(pady=(5, 3))
+        self.road_combo = ttk.Combobox(roads_content, values=["2-Lane Road", "4-Lane Road",
+                                       "4-Lane Highway", "Intersection"], state="readonly", width=26, font=("Arial", 9))
         self.road_combo.set("2-Lane Road")
         self.road_combo.pack(pady=5, padx=8)
 
-        roads = [
-            ("Straight Road", "road", "#5d6d7e"),
-            ("Curved Road", "curved_road", "#34495e")
-        ]
+        for text, tool, color in [("Straight Road", "road", "#5d6d7e"), ("Curved Road", "curved_road", "#34495e")]:
+            tk.Button(roads_content, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=28, height=2, bg=color, fg="white", font=("Arial", 9, "bold"),
+                     relief=tk.FLAT, bd=0, activebackground="#1abc9c", activeforeground="white",
+                     cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
 
-        for text, tool, color in roads:
-            btn = tk.Button(roads_content, text=text, command=lambda t=tool: self.set_tool(t),
-                     width=28, height=2, bg=color, fg="white",
-                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
-                     activebackground="#1abc9c", activeforeground="white",
-                     cursor="hand2")
-            btn.pack(pady=4, padx=8, fill=tk.X)
-
-        # ARROWS SECTION
+        # ARROWS
         arrows_section = CollapsibleSection(scrollable_frame, "ARROWS")
         arrows_section.pack(fill=tk.X, pady=5, padx=5)
         arrows_content = arrows_section.get_content_frame()
 
-        arrows = [
-            ("Straight Arrow", "arrow", "#2c3e50"),
-            ("Left Turn Arrow", "turn_left", "#34495e"),
-            ("Right Turn Arrow", "turn_right", "#34495e"),
-            ("Left Curve Arrow", "curve_left", "#5d6d7e"),
-            ("Right Curve Arrow", "curve_right", "#5d6d7e")
-        ]
+        for text, tool, color in [("Straight Arrow", "arrow", "#2c3e50"), ("Left Turn Arrow", "turn_left", "#34495e"),
+                                  ("Right Turn Arrow", "turn_right", "#34495e"), ("Left Curve Arrow", "curve_left", "#5d6d7e"),
+                                  ("Right Curve Arrow", "curve_right", "#5d6d7e")]:
+            tk.Button(arrows_content, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=28, height=2, bg=color, fg="white", font=("Arial", 9, "bold"),
+                     relief=tk.FLAT, bd=0, activebackground="#1abc9c", activeforeground="white",
+                     cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
 
-        for text, tool, color in arrows:
-            btn = tk.Button(arrows_content, text=text, command=lambda t=tool: self.set_tool(t),
-                     width=28, height=2, bg=color, fg="white",
-                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
-                     activebackground="#1abc9c", activeforeground="white",
-                     cursor="hand2")
-            btn.pack(pady=4, padx=8, fill=tk.X)
-
-        # SYMBOLS SECTION
+        # SYMBOLS
         symbols_section = CollapsibleSection(scrollable_frame, "SYMBOLS")
         symbols_section.pack(fill=tk.X, pady=5, padx=5)
         symbols_content = symbols_section.get_content_frame()
 
-        symbols = [
-            ("Tree", "tree", "#27ae60"),
-            ("Pedestrian", "pedestrian", "#95a5a6"),
-            ("Text Label", "text", "#8e44ad"),
-            ("Compass", "compass", "#16a085")
-        ]
+        for text, tool, color in [("Tree", "tree", "#27ae60"), ("Pedestrian", "pedestrian", "#95a5a6"),
+                                  ("Text Label", "text", "#8e44ad"), ("Compass", "compass", "#16a085")]:
+            tk.Button(symbols_content, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=28, height=2, bg=color, fg="white", font=("Arial", 9, "bold"),
+                     relief=tk.FLAT, bd=0, activebackground="#1abc9c", activeforeground="white",
+                     cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
 
-        for text, tool, color in symbols:
-            btn = tk.Button(symbols_content, text=text, command=lambda t=tool: self.set_tool(t),
-                     width=28, height=2, bg=color, fg="white",
-                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
-                     activebackground="#1abc9c", activeforeground="white",
-                     cursor="hand2")
-            btn.pack(pady=4, padx=8, fill=tk.X)
-
-        # ACTIONS SECTION
+        # ACTIONS
         actions_section = CollapsibleSection(scrollable_frame, "ACTIONS")
         actions_section.pack(fill=tk.X, pady=5, padx=5)
         actions_content = actions_section.get_content_frame()
 
-        actions = [
-            ("Delete Selected", self.delete_selected, "#c0392b"),
-            ("Clear All", self.clear_all, "#e74c3c")
-        ]
+        for text, command, color in [("Delete Selected", self.delete_selected, "#c0392b"), ("Clear All", self.clear_all, "#e74c3c")]:
+            tk.Button(actions_content, text=text, command=command, width=28, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0, activebackground="#e74c3c",
+                     activeforeground="white", cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
 
-        for text, command, color in actions:
-            btn = tk.Button(actions_content, text=text, command=command,
-                     width=28, height=2, bg=color, fg="white",
-                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
-                     activebackground="#e74c3c", activeforeground="white",
-                     cursor="hand2")
-            btn.pack(pady=4, padx=8, fill=tk.X)
-
-        # EXPORT SECTION
+        # EXPORT
         export_section = CollapsibleSection(scrollable_frame, "EXPORT")
         export_section.pack(fill=tk.X, pady=5, padx=5)
         export_content = export_section.get_content_frame()
 
-        btn = tk.Button(export_content, text="Export to PDF", command=self.export_pdf,
-                 width=28, height=2, bg="#27ae60", fg="white",
-                 font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
-                 activebackground="#229954", activeforeground="white",
-                 cursor="hand2")
-        btn.pack(pady=4, padx=8, fill=tk.X)
+        tk.Button(export_content, text="Export to PDF", command=self.export_pdf, width=28, height=2,
+                 bg="#27ae60", fg="white", font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
+                 activebackground="#229954", activeforeground="white", cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
 
         tk.Label(scrollable_frame, text="", bg="#ecf0f1", height=2).pack()
 
-        # CANVAS - MAXIMIZED TO FILL REMAINING SCREEN
+        # CANVAS
         canvas_frame = tk.Frame(self.root, bg="#bdc3c7", relief=tk.SUNKEN, bd=2)
         canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -973,27 +924,20 @@ class AccidentReconstructorApp:
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
         status_frame.pack_propagate(False)
 
-        self.status_label = tk.Label(status_frame,
-                                     text="Ready | Select a tool and click on canvas to place objects",
-                                     bd=0, anchor=tk.W, bg="#ecf0f1", fg="#2c3e50",
-                                     font=("Arial", 9), padx=10)
+        self.status_label = tk.Label(status_frame, text="Ready | Select a tool and click on canvas to place objects",
+                                     bd=0, anchor=tk.W, bg="#ecf0f1", fg="#2c3e50", font=("Arial", 9), padx=10)
         self.status_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=2)
 
         legend_text = "Controls: R+ Rotate | + Size | W+ Width | H+ Height | C+ Curve | [R] Key | [Del] Delete"
-        hints_label = tk.Label(status_frame, text=legend_text,
-                              bg="#34495e", fg="white", font=("Arial", 8), padx=15)
-        hints_label.pack(side=tk.RIGHT, pady=2)
+        tk.Label(status_frame, text=legend_text, bg="#34495e", fg="white",
+                font=("Arial", 8), padx=15).pack(side=tk.RIGHT, pady=2)
 
     def set_tool(self, tool):
         self.current_tool = tool
-        tool_names = {
-            "car": "Sedan", "truck": "Pickup Truck", "semi": "18-Wheeler",
-            "motorcycle": "Motorcycle", "pedestrian": "Pedestrian", "tree": "Tree",
-            "road": "Straight Road", "curved_road": "Curved Road",
-            "arrow": "Straight Arrow", "turn_left": "Left Turn Arrow",
-            "turn_right": "Right Turn Arrow", "curve_left": "Left Curve Arrow",
-            "curve_right": "Right Curve Arrow", "text": "Text Label", "compass": "Compass"
-        }
+        tool_names = {"car": "Sedan", "truck": "Pickup Truck", "semi": "18-Wheeler", "motorcycle": "Motorcycle",
+                     "pedestrian": "Pedestrian", "tree": "Tree", "road": "Straight Road", "curved_road": "Curved Road",
+                     "arrow": "Straight Arrow", "turn_left": "Left Turn Arrow", "turn_right": "Right Turn Arrow",
+                     "curve_left": "Left Curve Arrow", "curve_right": "Right Curve Arrow", "text": "Text Label", "compass": "Compass"}
         self.status_label.config(text=f"Tool: {tool_names.get(tool, tool)} - Click canvas to place")
 
     def create_control_buttons(self):
@@ -1006,27 +950,18 @@ class AccidentReconstructorApp:
 
         if has_curve:
             self.control_buttons = [
-                ControlButton(cx, y1-20, "rotate_ccw"),
-                ControlButton(x2+20, cy-25, "width_up"),
-                ControlButton(x2+20, cy, "scale_up"),
-                ControlButton(x2+20, cy+25, "curve_up"),
-                ControlButton(cx+15, y2+20, "height_up"),
-                ControlButton(cx-15, y2+20, "rotate_cw"),
-                ControlButton(x1-20, cy+25, "curve_down"),
-                ControlButton(x1-20, cy, "scale_down"),
-                ControlButton(x1-20, cy-25, "width_down"),
-                ControlButton(cx, y1-50, "height_down")
+                ControlButton(cx, y1-20, "rotate_ccw"), ControlButton(x2+20, cy-25, "width_up"),
+                ControlButton(x2+20, cy, "scale_up"), ControlButton(x2+20, cy+25, "curve_up"),
+                ControlButton(cx+15, y2+20, "height_up"), ControlButton(cx-15, y2+20, "rotate_cw"),
+                ControlButton(x1-20, cy+25, "curve_down"), ControlButton(x1-20, cy, "scale_down"),
+                ControlButton(x1-20, cy-25, "width_down"), ControlButton(cx, y1-50, "height_down")
             ]
         else:
             self.control_buttons = [
-                ControlButton(cx, y1-20, "rotate_ccw"),
-                ControlButton(x2+20, cy-15, "width_up"),
-                ControlButton(x2+20, cy+15, "scale_up"),
-                ControlButton(cx+15, y2+20, "height_up"),
-                ControlButton(cx-15, y2+20, "rotate_cw"),
-                ControlButton(x1-20, cy+15, "scale_down"),
-                ControlButton(x1-20, cy-15, "width_down"),
-                ControlButton(cx, y1-50, "height_down")
+                ControlButton(cx, y1-20, "rotate_ccw"), ControlButton(x2+20, cy-15, "width_up"),
+                ControlButton(x2+20, cy+15, "scale_up"), ControlButton(cx+15, y2+20, "height_up"),
+                ControlButton(cx-15, y2+20, "rotate_cw"), ControlButton(x1-20, cy+15, "scale_down"),
+                ControlButton(x1-20, cy-15, "width_down"), ControlButton(cx, y1-50, "height_down")
             ]
 
     def draw_control_buttons(self):
@@ -1068,16 +1003,11 @@ class AccidentReconstructorApp:
         if not self.selected_object:
             return
         actions = {
-            "rotate_cw": lambda: self.selected_object.rotate(15),
-            "rotate_ccw": lambda: self.selected_object.rotate(-15),
-            "scale_up": lambda: self.selected_object.scale_up(),
-            "scale_down": lambda: self.selected_object.scale_down(),
-            "width_up": lambda: self.selected_object.width_up(),
-            "width_down": lambda: self.selected_object.width_down(),
-            "height_up": lambda: self.selected_object.height_up(),
-            "height_down": lambda: self.selected_object.height_down(),
-            "curve_up": lambda: self.selected_object.curve_up(),
-            "curve_down": lambda: self.selected_object.curve_down()
+            "rotate_cw": lambda: self.selected_object.rotate(15), "rotate_ccw": lambda: self.selected_object.rotate(-15),
+            "scale_up": lambda: self.selected_object.scale_up(), "scale_down": lambda: self.selected_object.scale_down(),
+            "width_up": lambda: self.selected_object.width_up(), "width_down": lambda: self.selected_object.width_down(),
+            "height_up": lambda: self.selected_object.height_up(), "height_down": lambda: self.selected_object.height_down(),
+            "curve_up": lambda: self.selected_object.curve_up(), "curve_down": lambda: self.selected_object.curve_down()
         }
         if button_type in actions:
             actions[button_type]()
@@ -1180,26 +1110,6 @@ class AccidentReconstructorApp:
             obj.draw(self.canvas)
         self.draw_control_buttons()
 
-    def capture_canvas_to_image(self):
-        """Capture canvas content as PIL Image"""
-        # Get canvas dimensions
-        self.canvas.update()
-        x = self.canvas.winfo_rootx()
-        y = self.canvas.winfo_rooty()
-        width = self.canvas.winfo_width()
-        height = self.canvas.winfo_height()
-
-        # Create image from canvas
-        img = Image.new('RGB', (width, height), 'white')
-        draw = ImageDraw.Draw(img)
-
-        # Draw all objects to image
-        for obj in self.objects:
-            # This is a simplified version - in production you'd render each object type
-            pass
-
-        return img
-
     def export_pdf(self):
         """Export diagram to PDF with actual canvas content"""
         filename = filedialog.asksaveasfilename(
@@ -1211,6 +1121,45 @@ class AccidentReconstructorApp:
             return
 
         try:
+            # Get canvas dimensions
+            self.canvas.update()
+            canvas_width = self.canvas.winfo_width()
+            canvas_height = self.canvas.winfo_height()
+
+            # Find bounding box of all objects
+            if self.objects:
+                min_x = min(obj.get_bounds()[0] for obj in self.objects)
+                min_y = min(obj.get_bounds()[1] for obj in self.objects)
+                max_x = max(obj.get_bounds()[2] for obj in self.objects)
+                max_y = max(obj.get_bounds()[3] for obj in self.objects)
+
+                # Add margin
+                margin = 50
+                min_x = max(0, min_x - margin)
+                min_y = max(0, min_y - margin)
+                max_x = min(canvas_width, max_x + margin)
+                max_y = min(canvas_height, max_y + margin)
+
+                diagram_width = int(max_x - min_x)
+                diagram_height = int(max_y - min_y)
+            else:
+                min_x, min_y = 0, 0
+                diagram_width, diagram_height = canvas_width, canvas_height
+
+            # Create PIL image of diagram
+            img = Image.new('RGB', (diagram_width, diagram_height), 'white')
+            draw = ImageDraw.Draw(img)
+
+            # Draw all objects to PIL image
+            for obj in self.objects:
+                obj.draw_to_pil(draw, offset_x=-min_x, offset_y=-min_y)
+
+            # Save image to temporary file
+            temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            temp_img_path = temp_img.name
+            temp_img.close()
+            img.save(temp_img_path, 'PNG')
+
             # Create PDF
             c = pdf_canvas.Canvas(filename, pagesize=letter)
             page_width, page_height = letter
@@ -1224,84 +1173,40 @@ class AccidentReconstructorApp:
             c.drawString(50, page_height - 70, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             c.drawString(50, page_height - 85, f"Created with: Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION}")
 
-            # Draw a line separator
+            # Line separator
             c.setStrokeColorRGB(0.5, 0.5, 0.5)
             c.setLineWidth(1)
             c.line(50, page_height - 95, page_width - 50, page_height - 95)
 
-            # Capture canvas as PostScript (better quality than screenshot)
-            try:
-                # Get canvas bounding box
-                self.canvas.update()
+            # Calculate scaling to fit diagram on page
+            max_img_width = page_width - 100
+            max_img_height = page_height - 200
 
-                # Create a temporary PostScript file
-                ps_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.ps')
-                ps_filename = ps_file.name
-                ps_file.close()
+            scale = min(max_img_width / diagram_width, max_img_height / diagram_height, 1.0)
 
-                # Export canvas to PostScript
-                self.canvas.postscript(file=ps_filename, colormode='color')
+            scaled_width = diagram_width * scale
+            scaled_height = diagram_height * scale
 
-                # Convert PS to image and add to PDF
-                try:
-                    from PIL import Image
-                    img = Image.open(ps_filename)
+            # Center the image
+            x_pos = (page_width - scaled_width) / 2
+            y_pos = page_height - 150 - scaled_height
 
-                    # Calculate scaling to fit on page
-                    max_width = page_width - 100
-                    max_height = page_height - 200
-
-                    img_width, img_height = img.size
-                    scale = min(max_width / img_width, max_height / img_height, 1.0)
-
-                    new_width = int(img_width * scale)
-                    new_height = int(img_height * scale)
-
-                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-                    # Save to temporary file
-                    img_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-                    img_filename = img_file.name
-                    img_file.close()
-                    img.save(img_filename, 'PNG')
-
-                    # Add image to PDF
-                    c.drawImage(img_filename, 50, page_height - 150 - new_height,
-                               width=new_width, height=new_height)
-
-                    # Clean up temp files
-                    import os
-                    try:
-                        os.remove(ps_filename)
-                        os.remove(img_filename)
-                    except:
-                        pass
-
-                except Exception as e:
-                    # Fallback: just add text description
-                    c.setFont("Helvetica", 10)
-                    c.drawString(50, page_height - 120, "Diagram Preview:")
-                    c.drawString(50, page_height - 140, f"Objects: {len(self.objects)}")
-
-                    y_pos = page_height - 160
-                    for i, obj in enumerate(self.objects, 1):
-                        obj_type = type(obj).__name__
-                        c.drawString(70, y_pos, f"{i}. {obj_type} at ({obj.x:.0f}, {obj.y:.0f})")
-                        y_pos -= 15
-                        if y_pos < 100:
-                            break
-
-            except Exception as e:
-                # Ultimate fallback
-                c.setFont("Helvetica", 10)
-                c.drawString(50, page_height - 120, "Diagram contains:")
-                c.drawString(50, page_height - 140, f"Total objects: {len(self.objects)}")
+            # Add diagram image to PDF
+            c.drawImage(temp_img_path, x_pos, y_pos, width=scaled_width, height=scaled_height)
 
             # Footer
             c.setFont("Helvetica-Oblique", 8)
             c.drawString(50, 30, f"Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION} | Galaxy AI")
 
             c.save()
+
+            # Clean up temp file
+            import os
+            try:
+                os.remove(temp_img_path)
+            except:
+                pass
+
             messagebox.showinfo("Success", f"PDF exported successfully!\n\nSaved to: {filename}")
 
         except Exception as e:
@@ -1315,14 +1220,14 @@ Version: {AutoUpdater.CURRENT_VERSION}
 Author: Galaxy AI
 
 Features:
-â€¢ 4 Realistic Vehicles (detailed rendering)
+â€¢ 4 Realistic Top-Down Vehicles
 â€¢ 6 Road Types
 â€¢ 5 Arrow Types
 â€¢ Symbols & Labels
 â€¢ Auto-Update
 â€¢ Collapsible Sections
 â€¢ Professional UI
-â€¢ PDF Export with Diagram"""
+â€¢ Full PDF Export with Diagram"""
         messagebox.showinfo("About", about, parent=self.root)
 
 def main():
