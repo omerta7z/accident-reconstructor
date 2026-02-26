@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Accident Reconstruction Diagram Tool v2.4.0
-Professional Edition with Fixed Auto-Update & North Arrow
+Accident Reconstruction Diagram Tool v2.5.0
+Complete Edition with Intersections, Animal, and ATV
 Author: Galaxy AI
 Date: February 26, 2026
 """
@@ -9,28 +9,25 @@ Date: February 26, 2026
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 import math
-from PIL import Image, ImageDraw, ImageTk
+from PIL import Image, ImageDraw
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas as pdf_canvas
-from reportlab.lib.utils import ImageReader
 from datetime import datetime
 import urllib.request
 import json
 import tempfile
 import shutil
 import sys
-import subprocess
-import io
 import os
 
 # ============================================================================
-# AUTO-UPDATE FUNCTIONALITY - FIXED
+# AUTO-UPDATE SYSTEM
 # ============================================================================
 
 class AutoUpdater:
     GITHUB_USER = "omerta7z"
     GITHUB_REPO = "accident-reconstructor"
-    CURRENT_VERSION = "2.4.0"
+    CURRENT_VERSION = "2.6.0"
 
     @classmethod
     def get_version_url(cls):
@@ -42,108 +39,53 @@ class AutoUpdater:
 
     @classmethod
     def check_for_updates(cls):
-        """Check GitHub for newer version"""
         try:
-            version_url = cls.get_version_url()
-            print(f"Checking for updates at: {version_url}")
-
-            # Add headers to avoid GitHub rate limiting
-            req = urllib.request.Request(version_url)
-            req.add_header('User-Agent', 'AccidentReconstructor/2.4.0')
-
+            req = urllib.request.Request(cls.get_version_url())
+            req.add_header('User-Agent', 'AccidentReconstructor/2.5.0')
             with urllib.request.urlopen(req, timeout=10) as response:
-                data = response.read().decode('utf-8')
-                version_data = json.loads(data)
-
+                version_data = json.loads(response.read().decode('utf-8'))
             latest_version = version_data.get("version", "0.0.0")
-            changelog = version_data.get("changelog", "")
-
-            print(f"Current version: {cls.CURRENT_VERSION}")
-            print(f"Latest version: {latest_version}")
-
-            # Compare versions
             current = tuple(map(int, cls.CURRENT_VERSION.split(".")))
             latest = tuple(map(int, latest_version.split(".")))
-
             if latest > current:
-                print("Update available!")
-                return True, latest_version, changelog
-            else:
-                print("Already up to date")
-                return False, cls.CURRENT_VERSION, ""
-
-        except Exception as e:
-            print(f"Update check failed: {e}")
+                return True, latest_version, version_data.get("changelog", "")
+            return False, cls.CURRENT_VERSION, ""
+        except:
             return False, cls.CURRENT_VERSION, ""
 
     @classmethod
     def download_update(cls, progress_callback=None):
-        """Download new version from GitHub"""
         try:
-            download_url = cls.get_download_url()
-            print(f"Downloading from: {download_url}")
-
-            # Create temp file
             temp_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.py')
             temp_path = temp_file.name
             temp_file.close()
 
-            # Download with progress
             def report_progress(block_num, block_size, total_size):
                 if progress_callback and total_size > 0:
-                    downloaded = block_num * block_size
-                    percent = min(100, (downloaded / total_size) * 100)
+                    percent = min(100, (block_num * block_size / total_size) * 100)
                     progress_callback(percent)
 
-            # Add headers
-            req = urllib.request.Request(download_url)
-            req.add_header('User-Agent', 'AccidentReconstructor/2.4.0')
-
-            # Download file
-            urllib.request.urlretrieve(download_url, temp_path, reporthook=report_progress)
-
-            print(f"Downloaded to: {temp_path}")
+            req = urllib.request.Request(cls.get_download_url())
+            req.add_header('User-Agent', 'AccidentReconstructor/2.5.0')
+            urllib.request.urlretrieve(cls.get_download_url(), temp_path, reporthook=report_progress)
             return temp_path
-
-        except Exception as e:
-            print(f"Download failed: {e}")
+        except:
             return None
 
     @classmethod
     def apply_update(cls, new_file_path):
-        """Apply the downloaded update"""
         try:
-            # Get current file path
-            if getattr(sys, 'frozen', False):
-                # Running as compiled executable
-                current_file = sys.executable
-            else:
-                # Running as script
-                current_file = os.path.abspath(sys.argv[0])
-
-            print(f"Current file: {current_file}")
-            print(f"New file: {new_file_path}")
-
-            # Create backup
+            current_file = os.path.abspath(sys.argv[0]) if not getattr(sys, 'frozen', False) else sys.executable
             backup_file = current_file + ".backup"
             if os.path.exists(current_file):
                 shutil.copy2(current_file, backup_file)
-                print(f"Backup created: {backup_file}")
-
-            # Replace current file with new version
             shutil.copy2(new_file_path, current_file)
-            print("File replaced successfully")
-
-            # Clean up temp file
             try:
                 os.remove(new_file_path)
             except:
                 pass
-
             return True
-
-        except Exception as e:
-            print(f"Update failed: {e}")
+        except:
             return False
 
 class UpdateDialog:
@@ -163,7 +105,7 @@ class UpdateDialog:
 
         content = tk.Frame(self.dialog, bg="white")
         content.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        tk.Label(content, text=f"Version {version} is available!",
+        tk.Label(content, text=f"Version {version} available!",
                 font=("Arial", 12, "bold"), bg="white").pack(pady=10)
         tk.Label(content, text=f"Current: {AutoUpdater.CURRENT_VERSION}",
                 font=("Arial", 10), bg="white", fg="#7f8c8d").pack()
@@ -179,7 +121,7 @@ class UpdateDialog:
                                 yscrollcommand=scrollbar.set, font=("Arial", 9))
         changelog_text.pack(fill=tk.BOTH, expand=True)
         scrollbar.config(command=changelog_text.yview)
-        changelog_text.insert("1.0", changelog if changelog else "Bug fixes and improvements")
+        changelog_text.insert("1.0", changelog if changelog else "Updates")
         changelog_text.config(state=tk.DISABLED)
 
         self.progress_frame = tk.Frame(content, bg="white")
@@ -211,18 +153,17 @@ class UpdateDialog:
 
         new_file = AutoUpdater.download_update(progress_callback=self.update_progress)
         if new_file:
-            self.progress_label.config(text="Installing update...")
+            self.progress_label.config(text="Installing...")
             self.dialog.update()
             if AutoUpdater.apply_update(new_file):
-                messagebox.showinfo("Update Complete", "Update installed successfully!\n\nPlease restart the application.",
-                                   parent=self.dialog)
+                messagebox.showinfo("Complete", "Installed! Restart app.", parent=self.dialog)
                 self.dialog.destroy()
                 sys.exit(0)
             else:
-                messagebox.showerror("Update Failed", "Failed to install update. Please try again later.", parent=self.dialog)
+                messagebox.showerror("Failed", "Install failed.", parent=self.dialog)
                 self.dialog.destroy()
         else:
-            messagebox.showerror("Download Failed", "Failed to download update. Please check your internet connection.", parent=self.dialog)
+            messagebox.showerror("Failed", "Download failed.", parent=self.dialog)
             self.dialog.destroy()
 
     def update_later(self):
@@ -233,8 +174,8 @@ def check_for_updates_on_startup(root):
         has_update, version, changelog = AutoUpdater.check_for_updates()
         if has_update:
             UpdateDialog(root, version, changelog)
-    except Exception as e:
-        print(f"Startup update check failed: {e}")
+    except:
+        pass
 
 def manual_update_check(root):
     try:
@@ -242,27 +183,24 @@ def manual_update_check(root):
         if has_update:
             UpdateDialog(root, version, changelog)
         else:
-            messagebox.showinfo("No Updates",
-                               f"You have the latest version ({AutoUpdater.CURRENT_VERSION}).",
-                               parent=root)
+            messagebox.showinfo("No Updates", f"Latest: {AutoUpdater.CURRENT_VERSION}", parent=root)
     except Exception as e:
-        messagebox.showerror("Update Check Failed", f"Failed to check for updates: {str(e)}", parent=root)
+        messagebox.showerror("Failed", f"Error: {e}", parent=root)
 
 # ============================================================================
-# COLLAPSIBLE SECTION
+# UI COMPONENTS
 # ============================================================================
 
 class CollapsibleSection(tk.Frame):
     def __init__(self, parent, title, bg_color="#ecf0f1"):
         super().__init__(parent, bg=bg_color)
-        self.bg_color = bg_color
-        self.is_expanded = True
+        self.bg_color, self.is_expanded = bg_color, True
 
         self.header = tk.Frame(self, bg="#34495e", cursor="hand2", height=35)
         self.header.pack(fill=tk.X, pady=(0, 2))
         self.header.pack_propagate(False)
 
-        self.arrow_label = tk.Label(self.header, text="â–¼", bg="#34495e", fg="white",
+        self.arrow_label = tk.Label(self.header, text="▼", bg="#34495e", fg="white",
                                     font=("Arial", 10, "bold"), width=2)
         self.arrow_label.pack(side=tk.LEFT, padx=8)
 
@@ -273,25 +211,24 @@ class CollapsibleSection(tk.Frame):
         self.content = tk.Frame(self, bg=bg_color)
         self.content.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
 
-        self.header.bind("<Button-1>", self.toggle)
-        self.arrow_label.bind("<Button-1>", self.toggle)
-        self.title_label.bind("<Button-1>", self.toggle)
+        for widget in [self.header, self.arrow_label, self.title_label]:
+            widget.bind("<Button-1>", self.toggle)
 
     def toggle(self, event=None):
         if self.is_expanded:
             self.content.pack_forget()
-            self.arrow_label.config(text="â–¶")
+            self.arrow_label.config(text="▶")
             self.is_expanded = False
         else:
             self.content.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
-            self.arrow_label.config(text="â–¼")
+            self.arrow_label.config(text="▼")
             self.is_expanded = True
 
     def get_content_frame(self):
         return self.content
 
 # ============================================================================
-# DIAGRAM OBJECTS
+# DIAGRAM OBJECTS BASE CLASS
 # ============================================================================
 
 class DiagramObject:
@@ -305,45 +242,64 @@ class DiagramObject:
         pass
 
     def draw_to_pil(self, draw, offset_x=0, offset_y=0):
-        """Draw object to PIL ImageDraw for PDF export"""
         pass
 
     def contains(self, x, y):
         return False
+
     def move(self, dx, dy):
         self.x += dx
         self.y += dy
+
     def rotate(self, angle=15):
         self.rotation = (self.rotation + angle) % 360
+
     def scale_up(self):
         self.scale = min(self.scale * 1.2, 3.0)
+
     def scale_down(self):
         self.scale = max(self.scale / 1.2, 0.3)
+
     def width_up(self):
         self.width_scale = min(self.width_scale * 1.2, 3.0)
+
     def width_down(self):
         self.width_scale = max(self.width_scale / 1.2, 0.3)
+
     def height_up(self):
         self.height_scale = min(self.height_scale * 1.2, 3.0)
+
     def height_down(self):
         self.height_scale = max(self.height_scale / 1.2, 0.3)
+
     def curve_up(self):
         self.curve_amount = min(self.curve_amount + 0.2, 2.0)
+
     def curve_down(self):
         self.curve_amount = max(self.curve_amount - 0.2, -2.0)
+
     def get_bounds(self):
         return (self.x - 50, self.y - 50, self.x + 50, self.y + 50)
 
+# ============================================================================
+# VEHICLE CLASSES (5 TYPES: Car, Truck, Semi, Motorcycle, ATV)
+# ============================================================================
+
 class Vehicle(DiagramObject):
-    """Realistic top-down vehicle view"""
+    """All vehicle types with realistic top-down views"""
     def __init__(self, x, y, vehicle_type="car"):
         super().__init__(x, y)
         self.vehicle_type = vehicle_type
-        sizes = {"car": (55, 100), "truck": (75, 130), "semi": (80, 200), "motorcycle": (30, 65)}
+        sizes = {
+            "car": (55, 100),
+            "truck": (75, 130),
+            "semi": (80, 200),
+            "motorcycle": (30, 65),
+            "atv": (50, 70)  # NEW in v2.5.0
+        }
         self.base_width, self.base_height = sizes.get(vehicle_type, (55, 100))
 
     def draw(self, canvas):
-        """Draw vehicle on tkinter canvas"""
         w = self.base_width * self.scale * self.width_scale
         h = self.base_height * self.scale * self.height_scale
         angle = math.radians(self.rotation)
@@ -361,284 +317,210 @@ class Vehicle(DiagramObject):
                  rp(hw+3*s, hh+3*s), rp(-hw+3*s, hh+3*s)]
         canvas.create_polygon(shadow, fill="#d0d0d0", outline="", tags="object")
 
-        if self.vehicle_type == "motorcycle":
-            self._draw_motorcycle_topdown(canvas, rp, hw, hh, s, outline, lw)
+        # Draw specific vehicle type
+        if self.vehicle_type == "atv":
+            self._draw_atv(canvas, rp, hw, hh, s, outline, lw)
+        elif self.vehicle_type == "motorcycle":
+            self._draw_motorcycle(canvas, rp, hw, hh, s, outline, lw)
         elif self.vehicle_type == "semi":
-            self._draw_semi_topdown(canvas, rp, hw, hh, s, outline, lw)
+            self._draw_semi(canvas, rp, hw, hh, s, outline, lw)
         elif self.vehicle_type == "truck":
-            self._draw_truck_topdown(canvas, rp, hw, hh, s, outline, lw)
-        else:  # car
-            self._draw_car_topdown(canvas, rp, hw, hh, s, outline, lw)
+            self._draw_truck(canvas, rp, hw, hh, s, outline, lw)
+        else:
+            self._draw_car(canvas, rp, hw, hh, s, outline, lw)
 
-    def _draw_car_topdown(self, canvas, rp, hw, hh, s, outline, lw):
-        """Draw sedan from top-down view"""
-        # Main body
+    def _draw_atv(self, canvas, rp, hw, hh, s, outline, lw):
+        """NEW: ATV with 4 wheels, brown color"""
+        # Body
+        body = [rp(-hw*0.7, -hh*0.7), rp(hw*0.7, -hh*0.7),
+               rp(hw*0.7, hh*0.7), rp(-hw*0.7, hh*0.7)]
+        canvas.create_polygon(body, fill="#8b4513", outline=outline, width=lw, tags="object")
+
+        # Handlebars
+        handlebar_y = -hh*0.75
+        canvas.create_line(rp(-hw*0.9, handlebar_y)[0], rp(-hw*0.9, handlebar_y)[1],
+                          rp(hw*0.9, handlebar_y)[0], rp(hw*0.9, handlebar_y)[1],
+                          fill=outline, width=int(lw*1.5), tags="object")
+
+        # Seat
+        seat = [rp(-hw*0.6, -hh*0.2), rp(hw*0.6, -hh*0.2),
+               rp(hw*0.6, hh*0.4), rp(-hw*0.6, hh*0.4)]
+        canvas.create_polygon(seat, fill="#654321", outline=outline, width=int(lw*0.7), tags="object")
+
+        # 4 Wheels
+        wr = 9 * s
+        for wx, wy in [(-hw*0.85, -hh*0.65), (hw*0.85, -hh*0.65),
+                      (-hw*0.85, hh*0.65), (hw*0.85, hh*0.65)]:
+            wheel_x, wheel_y = rp(wx, wy)
+            canvas.create_oval(wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr,
+                             fill="#000000", outline=outline, width=int(lw*0.8), tags="object")
+
+    def _draw_car(self, canvas, rp, hw, hh, s, outline, lw):
+        """Sedan"""
         body = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
                rp(hw*0.9, hh*0.85), rp(-hw*0.9, hh*0.85)]
         canvas.create_polygon(body, fill="#3498db", outline=outline, width=lw, tags="object")
-
-        # Hood (front)
         hood = [rp(-hw*0.85, -hh*0.85), rp(hw*0.85, -hh*0.85),
                rp(hw*0.85, -hh*0.5), rp(-hw*0.85, -hh*0.5)]
         canvas.create_polygon(hood, fill="#2980b9", outline=outline, width=int(lw*0.7), tags="object")
-
-        # Windshield
         windshield = [rp(-hw*0.7, -hh*0.5), rp(hw*0.7, -hh*0.5),
                      rp(hw*0.7, -hh*0.2), rp(-hw*0.7, -hh*0.2)]
         canvas.create_polygon(windshield, fill="#85c1e9", outline=outline, width=int(lw*0.5), tags="object")
-
-        # Roof
         roof = [rp(-hw*0.75, -hh*0.2), rp(hw*0.75, -hh*0.2),
                rp(hw*0.75, hh*0.3), rp(-hw*0.75, hh*0.3)]
         canvas.create_polygon(roof, fill="#5dade2", outline=outline, width=int(lw*0.5), tags="object")
-
-        # Rear window
         rear_window = [rp(-hw*0.7, hh*0.3), rp(hw*0.7, hh*0.3),
                       rp(hw*0.7, hh*0.5), rp(-hw*0.7, hh*0.5)]
         canvas.create_polygon(rear_window, fill="#85c1e9", outline=outline, width=int(lw*0.5), tags="object")
-
-        # Trunk
         trunk = [rp(-hw*0.85, hh*0.5), rp(hw*0.85, hh*0.5),
                 rp(hw*0.85, hh*0.85), rp(-hw*0.85, hh*0.85)]
         canvas.create_polygon(trunk, fill="#2980b9", outline=outline, width=int(lw*0.7), tags="object")
-
-        # Wheels (black circles)
         wr = 8 * s
-        wheel_positions = [(-hw*0.75, -hh*0.6), (hw*0.75, -hh*0.6),
-                          (-hw*0.75, hh*0.6), (hw*0.75, hh*0.6)]
-        for wx, wy in wheel_positions:
+        for wx, wy in [(-hw*0.75, -hh*0.6), (hw*0.75, -hh*0.6),
+                      (-hw*0.75, hh*0.6), (hw*0.75, hh*0.6)]:
             wheel_x, wheel_y = rp(wx, wy)
             canvas.create_oval(wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr,
                              fill="#000000", outline=outline, width=int(lw*0.6), tags="object")
 
-    def _draw_truck_topdown(self, canvas, rp, hw, hh, s, outline, lw):
-        """Draw pickup truck from top-down view"""
-        # Cab
+    def _draw_truck(self, canvas, rp, hw, hh, s, outline, lw):
+        """Pickup truck"""
         cab = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
               rp(hw*0.9, -hh*0.2), rp(-hw*0.9, -hh*0.2)]
         canvas.create_polygon(cab, fill="#e74c3c", outline=outline, width=lw, tags="object")
-
-        # Windshield
         windshield = [rp(-hw*0.7, -hh*0.6), rp(hw*0.7, -hh*0.6),
                      rp(hw*0.7, -hh*0.35), rp(-hw*0.7, -hh*0.35)]
         canvas.create_polygon(windshield, fill="#f1948a", outline=outline, width=int(lw*0.5), tags="object")
-
-        # Bed
         bed = [rp(-hw*0.9, -hh*0.15), rp(hw*0.9, -hh*0.15),
               rp(hw*0.9, hh*0.85), rp(-hw*0.9, hh*0.85)]
         canvas.create_polygon(bed, fill="#c0392b", outline=outline, width=lw, tags="object")
-
-        # Bed rails
-        canvas.create_line(rp(-hw*0.9, -hh*0.15)[0], rp(-hw*0.9, -hh*0.15)[1],
-                          rp(-hw*0.9, hh*0.85)[0], rp(-hw*0.9, hh*0.85)[1],
-                          fill=outline, width=int(lw*1.2), tags="object")
-        canvas.create_line(rp(hw*0.9, -hh*0.15)[0], rp(hw*0.9, -hh*0.15)[1],
-                          rp(hw*0.9, hh*0.85)[0], rp(hw*0.9, hh*0.85)[1],
-                          fill=outline, width=int(lw*1.2), tags="object")
-
-        # Wheels
         wr = 9 * s
-        wheel_positions = [(-hw*0.75, -hh*0.7), (hw*0.75, -hh*0.7),
-                          (-hw*0.75, hh*0.65), (hw*0.75, hh*0.65)]
-        for wx, wy in wheel_positions:
+        for wx, wy in [(-hw*0.75, -hh*0.7), (hw*0.75, -hh*0.7),
+                      (-hw*0.75, hh*0.65), (hw*0.75, hh*0.65)]:
             wheel_x, wheel_y = rp(wx, wy)
             canvas.create_oval(wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr,
                              fill="#000000", outline=outline, width=int(lw*0.6), tags="object")
 
-    def _draw_semi_topdown(self, canvas, rp, hw, hh, s, outline, lw):
-        """Draw 18-wheeler from top-down view"""
-        # Cab
+    def _draw_semi(self, canvas, rp, hw, hh, s, outline, lw):
+        """18-wheeler"""
         cab_h = hh * 0.25
         cab = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
               rp(hw*0.9, -hh*0.85+cab_h*2), rp(-hw*0.9, -hh*0.85+cab_h*2)]
         canvas.create_polygon(cab, fill="#f39c12", outline=outline, width=lw, tags="object")
-
-        # Windshield
         windshield = [rp(-hw*0.7, -hh*0.75), rp(hw*0.7, -hh*0.75),
                      rp(hw*0.7, -hh*0.55), rp(-hw*0.7, -hh*0.55)]
         canvas.create_polygon(windshield, fill="#f8c471", outline=outline, width=int(lw*0.5), tags="object")
-
-        # Trailer
         trailer = [rp(-hw*0.95, -hh*0.85+cab_h*2+5*s), rp(hw*0.95, -hh*0.85+cab_h*2+5*s),
                   rp(hw*0.95, hh*0.85), rp(-hw*0.95, hh*0.85)]
         canvas.create_polygon(trailer, fill="#d68910", outline=outline, width=lw, tags="object")
-
-        # Trailer details (vertical lines)
-        for i in range(3):
-            y_pos = -hh*0.3 + i * hh*0.35
-            canvas.create_line(rp(-hw*0.95, y_pos)[0], rp(-hw*0.95, y_pos)[1],
-                              rp(hw*0.95, y_pos)[0], rp(hw*0.95, y_pos)[1],
-                              fill=outline, width=int(lw*0.4), tags="object")
-
-        # Wheels (6 wheels for semi)
         wr = 7 * s
-        wheel_positions = [
-            (-hw*0.75, -hh*0.85+cab_h*2), (hw*0.75, -hh*0.85+cab_h*2),  # Cab wheels
-            (-hw*0.85, hh*0.5), (hw*0.85, hh*0.5),  # Rear wheels 1
-            (-hw*0.85, hh*0.7), (hw*0.85, hh*0.7)   # Rear wheels 2
-        ]
-        for wx, wy in wheel_positions:
+        for wx, wy in [(-hw*0.75, -hh*0.85+cab_h*2), (hw*0.75, -hh*0.85+cab_h*2),
+                      (-hw*0.85, hh*0.5), (hw*0.85, hh*0.5),
+                      (-hw*0.85, hh*0.7), (hw*0.85, hh*0.7)]:
             wheel_x, wheel_y = rp(wx, wy)
             canvas.create_oval(wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr,
                              fill="#000000", outline=outline, width=int(lw*0.6), tags="object")
 
-    def _draw_motorcycle_topdown(self, canvas, rp, hw, hh, s, outline, lw):
-        """Draw motorcycle from top-down view"""
-        # Main body (narrow)
+    def _draw_motorcycle(self, canvas, rp, hw, hh, s, outline, lw):
+        """Motorcycle"""
         body = [rp(-hw*0.4, -hh*0.7), rp(hw*0.4, -hh*0.7),
                rp(hw*0.4, hh*0.7), rp(-hw*0.4, hh*0.7)]
         canvas.create_polygon(body, fill="#7f8c8d", outline=outline, width=lw, tags="object")
-
-        # Handlebars (front)
         handlebar_y = -hh*0.75
         canvas.create_line(rp(-hw*0.8, handlebar_y)[0], rp(-hw*0.8, handlebar_y)[1],
                           rp(hw*0.8, handlebar_y)[0], rp(hw*0.8, handlebar_y)[1],
                           fill=outline, width=int(lw*1.5), tags="object")
-
-        # Seat area
         seat = [rp(-hw*0.5, -hh*0.2), rp(hw*0.5, -hh*0.2),
                rp(hw*0.5, hh*0.3), rp(-hw*0.5, hh*0.3)]
         canvas.create_polygon(seat, fill="#95a5a6", outline=outline, width=int(lw*0.7), tags="object")
-
-        # Wheels (2 wheels)
         wr = 10 * s
-        wheel_positions = [(0, -hh*0.7), (0, hh*0.7)]
-        for wx, wy in wheel_positions:
+        for wx, wy in [(0, -hh*0.7), (0, hh*0.7)]:
             wheel_x, wheel_y = rp(wx, wy)
             canvas.create_oval(wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr,
                              fill="#000000", outline=outline, width=int(lw*0.8), tags="object")
 
     def draw_to_pil(self, draw, offset_x=0, offset_y=0):
-        """Draw vehicle to PIL ImageDraw for PDF export"""
+        """Draw to PIL for PDF export"""
         w = self.base_width * self.scale * self.width_scale
         h = self.base_height * self.scale * self.height_scale
         angle = math.radians(self.rotation)
         cos_a, sin_a = math.cos(angle), math.sin(angle)
 
         def rp(px, py):
-            rx = px * cos_a - py * sin_a + self.x + offset_x
-            ry = px * sin_a + py * cos_a + self.y + offset_y
-            return (int(rx), int(ry))
+            return (int(px * cos_a - py * sin_a + self.x + offset_x),
+                   int(px * sin_a + py * cos_a + self.y + offset_y))
 
         hw, hh, s = w/2, h/2, self.scale
-        lw = int(3 * s) if self.selected else int(2 * s)
-
-        # Shadow
         shadow = [rp(-hw+3*s, -hh+3*s), rp(hw+3*s, -hh+3*s),
                  rp(hw+3*s, hh+3*s), rp(-hw+3*s, hh+3*s)]
-        draw.polygon(shadow, fill="#d0d0d0", outline=None)
+        draw.polygon(shadow, fill="#d0d0d0")
 
-        if self.vehicle_type == "motorcycle":
-            self._draw_motorcycle_pil(draw, rp, hw, hh, s, lw)
+        if self.vehicle_type == "atv":
+            body = [rp(-hw*0.7, -hh*0.7), rp(hw*0.7, -hh*0.7),
+                   rp(hw*0.7, hh*0.7), rp(-hw*0.7, hh*0.7)]
+            draw.polygon(body, fill="#8b4513", outline="#000000")
+            seat = [rp(-hw*0.6, -hh*0.2), rp(hw*0.6, -hh*0.2),
+                   rp(hw*0.6, hh*0.4), rp(-hw*0.6, hh*0.4)]
+            draw.polygon(seat, fill="#654321", outline="#000000")
+            wr = int(9 * s)
+            for wx, wy in [(-hw*0.85, -hh*0.65), (hw*0.85, -hh*0.65),
+                          (-hw*0.85, hh*0.65), (hw*0.85, hh*0.65)]:
+                wheel_x, wheel_y = rp(wx, wy)
+                draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr], fill="#000000")
+        elif self.vehicle_type == "motorcycle":
+            body = [rp(-hw*0.4, -hh*0.7), rp(hw*0.4, -hh*0.7),
+                   rp(hw*0.4, hh*0.7), rp(-hw*0.4, hh*0.7)]
+            draw.polygon(body, fill="#7f8c8d", outline="#000000")
+            wr = int(10 * s)
+            for wx, wy in [(0, -hh*0.7), (0, hh*0.7)]:
+                wheel_x, wheel_y = rp(wx, wy)
+                draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr], fill="#000000")
         elif self.vehicle_type == "semi":
-            self._draw_semi_pil(draw, rp, hw, hh, s, lw)
+            cab_h = hh * 0.25
+            cab = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
+                  rp(hw*0.9, -hh*0.85+cab_h*2), rp(-hw*0.9, -hh*0.85+cab_h*2)]
+            draw.polygon(cab, fill="#f39c12", outline="#000000")
+            trailer = [rp(-hw*0.95, -hh*0.85+cab_h*2+5*s), rp(hw*0.95, -hh*0.85+cab_h*2+5*s),
+                      rp(hw*0.95, hh*0.85), rp(-hw*0.95, hh*0.85)]
+            draw.polygon(trailer, fill="#d68910", outline="#000000")
+            wr = int(7 * s)
+            for wx, wy in [(-hw*0.75, -hh*0.85+cab_h*2), (hw*0.75, -hh*0.85+cab_h*2),
+                          (-hw*0.85, hh*0.5), (hw*0.85, hh*0.5),
+                          (-hw*0.85, hh*0.7), (hw*0.85, hh*0.7)]:
+                wheel_x, wheel_y = rp(wx, wy)
+                draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr], fill="#000000")
         elif self.vehicle_type == "truck":
-            self._draw_truck_pil(draw, rp, hw, hh, s, lw)
-        else:
-            self._draw_car_pil(draw, rp, hw, hh, s, lw)
-
-    def _draw_car_pil(self, draw, rp, hw, hh, s, lw):
-        """Draw sedan to PIL"""
-        body = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
-               rp(hw*0.9, hh*0.85), rp(-hw*0.9, hh*0.85)]
-        draw.polygon(body, fill="#3498db", outline="#000000")
-
-        hood = [rp(-hw*0.85, -hh*0.85), rp(hw*0.85, -hh*0.85),
-               rp(hw*0.85, -hh*0.5), rp(-hw*0.85, -hh*0.5)]
-        draw.polygon(hood, fill="#2980b9", outline="#000000")
-
-        windshield = [rp(-hw*0.7, -hh*0.5), rp(hw*0.7, -hh*0.5),
-                     rp(hw*0.7, -hh*0.2), rp(-hw*0.7, -hh*0.2)]
-        draw.polygon(windshield, fill="#85c1e9", outline="#000000")
-
-        roof = [rp(-hw*0.75, -hh*0.2), rp(hw*0.75, -hh*0.2),
-               rp(hw*0.75, hh*0.3), rp(-hw*0.75, hh*0.3)]
-        draw.polygon(roof, fill="#5dade2", outline="#000000")
-
-        rear_window = [rp(-hw*0.7, hh*0.3), rp(hw*0.7, hh*0.3),
-                      rp(hw*0.7, hh*0.5), rp(-hw*0.7, hh*0.5)]
-        draw.polygon(rear_window, fill="#85c1e9", outline="#000000")
-
-        trunk = [rp(-hw*0.85, hh*0.5), rp(hw*0.85, hh*0.5),
-                rp(hw*0.85, hh*0.85), rp(-hw*0.85, hh*0.85)]
-        draw.polygon(trunk, fill="#2980b9", outline="#000000")
-
-        wr = int(8 * s)
-        wheel_positions = [(-hw*0.75, -hh*0.6), (hw*0.75, -hh*0.6),
-                          (-hw*0.75, hh*0.6), (hw*0.75, hh*0.6)]
-        for wx, wy in wheel_positions:
-            wheel_x, wheel_y = rp(wx, wy)
-            draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr],
-                        fill="#000000", outline="#000000")
-
-    def _draw_truck_pil(self, draw, rp, hw, hh, s, lw):
-        """Draw pickup to PIL"""
-        cab = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
-              rp(hw*0.9, -hh*0.2), rp(-hw*0.9, -hh*0.2)]
-        draw.polygon(cab, fill="#e74c3c", outline="#000000")
-
-        windshield = [rp(-hw*0.7, -hh*0.6), rp(hw*0.7, -hh*0.6),
-                     rp(hw*0.7, -hh*0.35), rp(-hw*0.7, -hh*0.35)]
-        draw.polygon(windshield, fill="#f1948a", outline="#000000")
-
-        bed = [rp(-hw*0.9, -hh*0.15), rp(hw*0.9, -hh*0.15),
-              rp(hw*0.9, hh*0.85), rp(-hw*0.9, hh*0.85)]
-        draw.polygon(bed, fill="#c0392b", outline="#000000")
-
-        wr = int(9 * s)
-        wheel_positions = [(-hw*0.75, -hh*0.7), (hw*0.75, -hh*0.7),
-                          (-hw*0.75, hh*0.65), (hw*0.75, hh*0.65)]
-        for wx, wy in wheel_positions:
-            wheel_x, wheel_y = rp(wx, wy)
-            draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr],
-                        fill="#000000", outline="#000000")
-
-    def _draw_semi_pil(self, draw, rp, hw, hh, s, lw):
-        """Draw semi to PIL"""
-        cab_h = hh * 0.25
-        cab = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
-              rp(hw*0.9, -hh*0.85+cab_h*2), rp(-hw*0.9, -hh*0.85+cab_h*2)]
-        draw.polygon(cab, fill="#f39c12", outline="#000000")
-
-        windshield = [rp(-hw*0.7, -hh*0.75), rp(hw*0.7, -hh*0.75),
-                     rp(hw*0.7, -hh*0.55), rp(-hw*0.7, -hh*0.55)]
-        draw.polygon(windshield, fill="#f8c471", outline="#000000")
-
-        trailer = [rp(-hw*0.95, -hh*0.85+cab_h*2+5*s), rp(hw*0.95, -hh*0.85+cab_h*2+5*s),
-                  rp(hw*0.95, hh*0.85), rp(-hw*0.95, hh*0.85)]
-        draw.polygon(trailer, fill="#d68910", outline="#000000")
-
-        wr = int(7 * s)
-        wheel_positions = [
-            (-hw*0.75, -hh*0.85+cab_h*2), (hw*0.75, -hh*0.85+cab_h*2),
-            (-hw*0.85, hh*0.5), (hw*0.85, hh*0.5),
-            (-hw*0.85, hh*0.7), (hw*0.85, hh*0.7)
-        ]
-        for wx, wy in wheel_positions:
-            wheel_x, wheel_y = rp(wx, wy)
-            draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr],
-                        fill="#000000", outline="#000000")
-
-    def _draw_motorcycle_pil(self, draw, rp, hw, hh, s, lw):
-        """Draw motorcycle to PIL"""
-        body = [rp(-hw*0.4, -hh*0.7), rp(hw*0.4, -hh*0.7),
-               rp(hw*0.4, hh*0.7), rp(-hw*0.4, hh*0.7)]
-        draw.polygon(body, fill="#7f8c8d", outline="#000000")
-
-        handlebar_y = -hh*0.75
-        draw.line([rp(-hw*0.8, handlebar_y), rp(hw*0.8, handlebar_y)],
-                 fill="#000000", width=int(lw*1.5))
-
-        seat = [rp(-hw*0.5, -hh*0.2), rp(hw*0.5, -hh*0.2),
-               rp(hw*0.5, hh*0.3), rp(-hw*0.5, hh*0.3)]
-        draw.polygon(seat, fill="#95a5a6", outline="#000000")
-
-        wr = int(10 * s)
-        wheel_positions = [(0, -hh*0.7), (0, hh*0.7)]
-        for wx, wy in wheel_positions:
-            wheel_x, wheel_y = rp(wx, wy)
-            draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr],
-                        fill="#000000", outline="#000000")
+            cab = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
+                  rp(hw*0.9, -hh*0.2), rp(-hw*0.9, -hh*0.2)]
+            draw.polygon(cab, fill="#e74c3c", outline="#000000")
+            bed = [rp(-hw*0.9, -hh*0.15), rp(hw*0.9, -hh*0.15),
+                  rp(hw*0.9, hh*0.85), rp(-hw*0.9, hh*0.85)]
+            draw.polygon(bed, fill="#c0392b", outline="#000000")
+            wr = int(9 * s)
+            for wx, wy in [(-hw*0.75, -hh*0.7), (hw*0.75, -hh*0.7),
+                          (-hw*0.75, hh*0.65), (hw*0.75, hh*0.65)]:
+                wheel_x, wheel_y = rp(wx, wy)
+                draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr], fill="#000000")
+        else:  # car
+            body = [rp(-hw*0.9, -hh*0.85), rp(hw*0.9, -hh*0.85),
+                   rp(hw*0.9, hh*0.85), rp(-hw*0.9, hh*0.85)]
+            draw.polygon(body, fill="#3498db", outline="#000000")
+            hood = [rp(-hw*0.85, -hh*0.85), rp(hw*0.85, -hh*0.85),
+                   rp(hw*0.85, -hh*0.5), rp(-hw*0.85, -hh*0.5)]
+            draw.polygon(hood, fill="#2980b9", outline="#000000")
+            windshield = [rp(-hw*0.7, -hh*0.5), rp(hw*0.7, -hh*0.5),
+                         rp(hw*0.7, -hh*0.2), rp(-hw*0.7, -hh*0.2)]
+            draw.polygon(windshield, fill="#85c1e9", outline="#000000")
+            roof = [rp(-hw*0.75, -hh*0.2), rp(hw*0.75, -hh*0.2),
+                   rp(hw*0.75, hh*0.3), rp(-hw*0.75, hh*0.3)]
+            draw.polygon(roof, fill="#5dade2", outline="#000000")
+            trunk = [rp(-hw*0.85, hh*0.5), rp(hw*0.85, hh*0.5),
+                    rp(hw*0.85, hh*0.85), rp(-hw*0.85, hh*0.85)]
+            draw.polygon(trunk, fill="#2980b9", outline="#000000")
+            wr = int(8 * s)
+            for wx, wy in [(-hw*0.75, -hh*0.6), (hw*0.75, -hh*0.6),
+                          (-hw*0.75, hh*0.6), (hw*0.75, hh*0.6)]:
+                wheel_x, wheel_y = rp(wx, wy)
+                draw.ellipse([wheel_x-wr, wheel_y-wr, wheel_x+wr, wheel_y+wr], fill="#000000")
 
     def contains(self, x, y):
         dx, dy = x - self.x, y - self.y
@@ -652,9 +534,9 @@ class Vehicle(DiagramObject):
     def get_bounds(self):
         hw = (self.base_width * self.scale * self.width_scale) / 2
         hh = (self.base_height * self.scale * self.height_scale) / 2
-        return (self.x-hw-30, self.y-hh-30, self.x+hw+30, self.y+hh+30
+        return (self.x-hw-30, self.y-hh-30, self.x+hw+30, self.y+hh+30)
 
-class Road(DiagramObject):
+class LegacyRoad(DiagramObject):
     def __init__(self, x, y, road_type="2-Lane Road"):
         super().__init__(x, y)
         self.road_type = road_type
@@ -740,359 +622,308 @@ class Road(DiagramObject):
         return (self.x - length - margin, self.y - width - margin,
                 self.x + length + margin, self.y + width + margin)
 
-class CurvedRoad(DiagramObject):
-    def __init__(self, x, y, road_type="2-Lane Road"):
+
+# ============================================================================
+# ROAD CLASSES (8 TYPES: 4 Basic + 4 NEW Intersections)
+# ============================================================================
+
+
+class Road(DiagramObject):
+    """Road segments: 2-lane / 4-lane, straight / curved.
+
+    Tool palette uses ids like:
+      - 2lane_straight, 2lane_curved
+      - 4lane_straight, 4lane_curved
+    """
+
+    def __init__(self, x, y, road_type="2lane_straight"):
         super().__init__(x, y)
         self.road_type = road_type
-        self.curve_amount = 0.5
+        self.base_width = 80 if "2lane" in road_type else 160
+        self.base_height = 200
 
     def draw(self, canvas):
-        s = self.scale
-        w_s = self.width_scale
-        h_s = self.height_scale
-        curve = self.curve_amount
-
-        angle_rad = math.radians(self.rotation)
-        cos_a = math.cos(angle_rad)
-        sin_a = math.sin(angle_rad)
+        w = self.base_width * self.scale * self.width_scale
+        h = self.base_height * self.scale * self.height_scale
+        angle = math.radians(self.rotation)
+        cos_a, sin_a = math.cos(angle), math.sin(angle)
 
         def rp(px, py):
-            rx = px * cos_a - py * sin_a + self.x
-            ry = px * sin_a + py * cos_a + self.y
-            return (rx, ry)
+            return (px * cos_a - py * sin_a + self.x, px * sin_a + py * cos_a + self.y)
 
-        outline = "#000000"
-        width = int(3 * s) if self.selected else int(2 * s)
+        hw, hh = w / 2, h / 2
+        lw = 3 if self.selected else 2
 
-        length = 200 * s * w_s
-        road_width = 25 * s * h_s
-        if "4-Lane" in self.road_type:
-            road_width = 40 * s * h_s
+        if "curved" in self.road_type:
+            self._draw_curved(canvas, rp, hw, hh, lw)
+        else:
+            self._draw_straight(canvas, rp, hw, hh, lw)
 
-        segments = 20
-        points_top = []
-        points_bottom = []
+    def _draw_straight(self, canvas, rp, hw, hh, lw):
+        road = [rp(-hw, -hh), rp(hw, -hh), rp(hw, hh), rp(-hw, hh)]
+        canvas.create_polygon(road, fill="#4a4a4a", outline="#000000", width=lw, tags="object")
 
-        for i in range(segments + 1):
-            t = i / segments
-            x_pos = -length + 2 * length * t
-            y_curve = curve * 100 * s * (t * (1 - t) * 4)
+        if "4lane" in self.road_type:
+            # lane separators
+            canvas.create_line(*rp(-hw / 2, -hh), *rp(-hw / 2, hh), fill="#ffff00", width=int(lw * 1.5), tags="object")
+            canvas.create_line(*rp(hw / 2, -hh), *rp(hw / 2, hh), fill="#ffff00", width=int(lw * 1.5), tags="object")
+            # median double yellow
+            canvas.create_line(*rp(-2, -hh), *rp(-2, hh), fill="#ffff00", width=int(lw * 2), tags="object")
+            canvas.create_line(*rp(2, -hh), *rp(2, hh), fill="#ffff00", width=int(lw * 2), tags="object")
+        else:
+            for i in range(-5, 6):
+                y1, y2 = i * hh / 5 - hh / 10, i * hh / 5 + hh / 10
+                canvas.create_line(*rp(0, y1), *rp(0, y2), fill="#ffff00", width=int(lw * 1.2), tags="object")
 
-            pt_top = rp(x_pos, -road_width/2 + y_curve)
-            points_top.append(pt_top)
+        canvas.create_line(*rp(-hw, -hh), *rp(-hw, hh), fill="#ffffff", width=lw, tags="object")
+        canvas.create_line(*rp(hw, -hh), *rp(hw, hh), fill="#ffffff", width=lw, tags="object")
 
-            pt_bottom = rp(x_pos, road_width/2 + y_curve)
-            points_bottom.append(pt_bottom)
+    def _draw_curved(self, canvas, rp, hw, hh, lw):
+        curve = self.curve_amount
+        num_points = 30
+        left_points = []
+        right_points = []
 
-        all_points = points_top + list(reversed(points_bottom))
-        canvas.create_polygon(all_points, fill="#808080", outline=outline, width=width, tags="object")
+        for i in range(num_points + 1):
+            t = i / num_points
+            y = (t - 0.5) * hh * 2
+            # quadratic bezier bump, peak at t=0.5
+            x_offset = curve * hw * 4 * t * (1 - t)
+            left_points.append(rp(-hw + x_offset, y))
+            right_points.append(rp(hw + x_offset, y))
 
-        center_points = []
-        for i in range(segments + 1):
-            t = i / segments
-            x_pos = -length + 2 * length * t
-            y_curve = curve * 100 * s * (t * (1 - t) * 4)
-            pt = rp(x_pos, y_curve)
-            center_points.append(pt)
+        all_points = left_points + list(reversed(right_points))
+        canvas.create_polygon(all_points, fill="#4a4a4a", outline="#000000", width=lw, tags="object")
 
-        for i in range(len(center_points) - 1):
-            if i % 2 == 0:
+        if "4lane" in self.road_type:
+            center_points = []
+            for i in range(num_points + 1):
+                t = i / num_points
+                y = (t - 0.5) * hh * 2
+                x_offset = curve * hw * 4 * t * (1 - t)
+                center_points.append(rp(x_offset, y))
+            for i in range(len(center_points) - 1):
                 canvas.create_line(center_points[i][0], center_points[i][1],
-                                 center_points[i+1][0], center_points[i+1][1],
-                                 fill="#ffffff", width=int(2*s), tags="object")
+                                   center_points[i + 1][0], center_points[i + 1][1],
+                                   fill="#ffff00", width=int(lw * 1.5), tags="object")
+        else:
+            for i in range(0, num_points, 3):
+                if i + 1 >= num_points:
+                    continue
+                t1 = i / num_points
+                t2 = (i + 1) / num_points
+                y1 = (t1 - 0.5) * hh * 2
+                y2 = (t2 - 0.5) * hh * 2
+                x1 = curve * hw * 4 * t1 * (1 - t1)
+                x2 = curve * hw * 4 * t2 * (1 - t2)
+                canvas.create_line(*rp(x1, y1), *rp(x2, y2), fill="#ffff00", width=int(lw * 1.2), tags="object")
 
     def draw_to_pil(self, draw, offset_x=0, offset_y=0):
-        s = self.scale
-        w_s = self.width_scale
-        h_s = self.height_scale
-        curve = self.curve_amount
-
-        angle_rad = math.radians(self.rotation)
-        cos_a = math.cos(angle_rad)
-        sin_a = math.sin(angle_rad)
+        w = self.base_width * self.scale * self.width_scale
+        h = self.base_height * self.scale * self.height_scale
+        angle = math.radians(self.rotation)
+        cos_a, sin_a = math.cos(angle), math.sin(angle)
 
         def rp(px, py):
-            rx = px * cos_a - py * sin_a + self.x + offset_x
-            ry = px * sin_a + py * cos_a + self.y + offset_y
-            return (int(rx), int(ry))
+            return (
+                int(px * cos_a - py * sin_a + self.x + offset_x),
+                int(px * sin_a + py * cos_a + self.y + offset_y),
+            )
 
-        length = 200 * s * w_s
-        road_width = 25 * s * h_s
-        if "4-Lane" in self.road_type:
-            road_width = 40 * s * h_s
+        hw, hh = w / 2, h / 2
 
-        segments = 20
-        points_top = []
-        points_bottom = []
+        if "curved" in self.road_type:
+            curve = self.curve_amount
+            num_points = 30
+            left_points = []
+            right_points = []
+            for i in range(num_points + 1):
+                t = i / num_points
+                y = (t - 0.5) * hh * 2
+                x_offset = curve * hw * 4 * t * (1 - t)
+                left_points.append(rp(-hw + x_offset, y))
+                right_points.append(rp(hw + x_offset, y))
+            draw.polygon(left_points + list(reversed(right_points)), fill="#4a4a4a", outline="#000000")
 
-        for i in range(segments + 1):
-            t = i / segments
-            x_pos = -length + 2 * length * t
-            y_curve = curve * 100 * s * (t * (1 - t) * 4)
-
-            pt_top = rp(x_pos, -road_width/2 + y_curve)
-            points_top.append(pt_top)
-
-            pt_bottom = rp(x_pos, road_width/2 + y_curve)
-            points_bottom.append(pt_bottom)
-
-        all_points = points_top + list(reversed(points_bottom))
-        draw.polygon(all_points, fill="#808080", outline="#000000")
-
-    def contains(self, x, y):
-        length = 200 * self.scale * self.width_scale
-        width = 40 * self.scale * self.height_scale
-        dx = abs(x - self.x)
-        dy = abs(y - self.y)
-        return dx < length and dy < width + abs(self.curve_amount * 50)
-
-    def get_bounds(self):
-        length = 200 * self.scale * self.width_scale
-        width = 40 * self.scale * self.height_scale
-        curve_offset = abs(self.curve_amount * 50)
-        margin = 30
-        return (self.x - length - margin, self.y - width - curve_offset - margin,
-                self.x + length + margin, self.y + width + curve_offset + margin)
-
-class Arrow(DiagramObject):
-    def __init__(self, x, y):
-        super().__init__(x, y)
-        self.base_length = 80
-
-    def draw(self, canvas):
-        length = self.base_length * self.scale * self.width_scale
-        angle_rad = math.radians(self.rotation)
-
-        x2 = self.x + length * math.cos(angle_rad)
-        y2 = self.y + length * math.sin(angle_rad)
-
-        outline = "#000000"
-        width = int(5 * self.scale * self.height_scale)
-        arrow_size = int(16 * self.scale)
-
-        canvas.create_line(self.x, self.y, x2, y2, fill=outline, width=width,
-                          arrow=tk.LAST, arrowshape=(arrow_size, arrow_size+4, arrow_size//2),
-                          tags="object")
-
-    def draw_to_pil(self, draw, offset_x=0, offset_y=0):
-        length = self.base_length * self.scale * self.width_scale
-        angle_rad = math.radians(self.rotation)
-
-        x1 = self.x + offset_x
-        y1 = self.y + offset_y
-        x2 = x1 + length * math.cos(angle_rad)
-        y2 = y1 + length * math.sin(angle_rad)
-
-        width = int(5 * self.scale * self.height_scale)
-        draw.line([(x1, y1), (x2, y2)], fill="#000000", width=width)
-
-        # Draw arrowhead
-        arrow_size = 16 * self.scale
-        angle1 = angle_rad + math.pi * 0.85
-        angle2 = angle_rad - math.pi * 0.85
-
-        p1 = (int(x2), int(y2))
-        p2 = (int(x2 + arrow_size * math.cos(angle1)), int(y2 + arrow_size * math.sin(angle1)))
-        p3 = (int(x2 + arrow_size * math.cos(angle2)), int(y2 + arrow_size * math.sin(angle2)))
-
-        draw.polygon([p1, p2, p3], fill="#000000", outline="#000000")
-
-    def contains(self, x, y):
-        length = self.base_length * self.scale * self.width_scale
-        dx = x - self.x
-        dy = y - self.y
-        return abs(dx) < length and abs(dy) < 20 * self.scale
-
-    def get_bounds(self):
-        length = self.base_length * self.scale * self.width_scale
-        margin = 30
-        return (self.x - margin, self.y - 20 * self.scale - margin,
-                self.x + length + margin, self.y + 20 * self.scale + margin)
-
-class TurnArrow(DiagramObject):
-    def __init__(self, x, y, direction="left"):
-        super().__init__(x, y)
-        self.direction = direction
-        self.base_size = 60
-
-    def draw(self, canvas):
-        size = self.base_size * self.scale
-        angle_rad = math.radians(self.rotation)
-        cos_a = math.cos(angle_rad)
-        sin_a = math.sin(angle_rad)
-
-        def rp(px, py):
-            rx = px * cos_a - py * sin_a + self.x
-            ry = px * sin_a + py * cos_a + self.y
-            return (rx, ry)
-
-        outline = "#000000"
-        width = int(5 * self.scale)
-
-        p1 = rp(0, size/2)
-        p2 = rp(0, -size/4)
-        canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill=outline, width=width, tags="object")
-
-        if self.direction == "left":
-            p3 = rp(-size/2, -size/4)
-        else:
-            p3 = rp(size/2, -size/4)
-
-        canvas.create_line(p2[0], p2[1], p3[0], p3[1], fill=outline, width=width, tags="object")
-
-        arrow_size = int(12 * self.scale)
-        if self.direction == "left":
-            ah = [rp(-size/2, -size/4), rp(-size/2 + arrow_size, -size/4 - arrow_size/2),
-                  rp(-size/2 + arrow_size, -size/4 + arrow_size/2)]
-        else:
-            ah = [rp(size/2, -size/4), rp(size/2 - arrow_size, -size/4 - arrow_size/2),
-                  rp(size/2 - arrow_size, -size/4 + arrow_size/2)]
-
-        canvas.create_polygon(ah, fill=outline, outline=outline, tags="object")
-
-    def draw_to_pil(self, draw, offset_x=0, offset_y=0):
-        size = self.base_size * self.scale
-        angle_rad = math.radians(self.rotation)
-        cos_a = math.cos(angle_rad)
-        sin_a = math.sin(angle_rad)
-
-        def rp(px, py):
-            rx = px * cos_a - py * sin_a + self.x + offset_x
-            ry = px * sin_a + py * cos_a + self.y + offset_y
-            return (int(rx), int(ry))
-
-        width = int(5 * self.scale)
-
-        p1 = rp(0, size/2)
-        p2 = rp(0, -size/4)
-        draw.line([p1, p2], fill="#000000", width=width)
-
-        if self.direction == "left":
-            p3 = rp(-size/2, -size/4)
-        else:
-            p3 = rp(size/2, -size/4)
-
-        draw.line([p2, p3], fill="#000000", width=width)
-
-        arrow_size = int(12 * self.scale)
-        if self.direction == "left":
-            ah = [rp(-size/2, -size/4), rp(-size/2 + arrow_size, -size/4 - arrow_size/2),
-                  rp(-size/2 + arrow_size, -size/4 + arrow_size/2)]
-        else:
-            ah = [rp(size/2, -size/4), rp(size/2 - arrow_size, -size/4 - arrow_size/2),
-                  rp(size/2 - arrow_size, -size/4 + arrow_size/2)]
-
-        draw.polygon(ah, fill="#000000", outline="#000000")
-
-    def contains(self, x, y):
-        size = self.base_size * self.scale
-        dx = abs(x - self.x)
-        dy = abs(y - self.y)
-        return dx < size and dy < size
-
-    def get_bounds(self):
-        size = self.base_size * self.scale
-        margin = 20
-        return (self.x - size - margin, self.y - size - margin,
-                self.x + size + margin, self.y + size + margin)
-
-class CurveArrow(DiagramObject):
-    def __init__(self, x, y, direction="left"):
-        super().__init__(x, y)
-        self.direction = direction
-        self.base_radius = 50
-        self.curve_amount = 1.0
-
-    def draw(self, canvas):
-        radius = self.base_radius * self.scale * self.width_scale
-
-        outline = "#000000"
-        width = int(5 * self.scale)
-
-        segments = 20
-        points = []
-
-        for i in range(segments + 1):
-            t = i / segments
-            if self.direction == "left":
-                angle = math.radians(270 + 90 * t + self.rotation)
+            if "4lane" in self.road_type:
+                center_points = []
+                for i in range(num_points + 1):
+                    t = i / num_points
+                    y = (t - 0.5) * hh * 2
+                    x_offset = curve * hw * 4 * t * (1 - t)
+                    center_points.append(rp(x_offset, y))
+                for i in range(len(center_points) - 1):
+                    draw.line([center_points[i], center_points[i + 1]], fill="#ffff00", width=2)
             else:
-                angle = math.radians(180 + 90 * t + self.rotation)
-
-            px = self.x + radius * math.cos(angle) * abs(self.curve_amount)
-            py = self.y + radius * math.sin(angle) * abs(self.curve_amount)
-            points.append((px, py))
-
-        for i in range(len(points) - 1):
-            canvas.create_line(points[i][0], points[i][1], points[i+1][0], points[i+1][1],
-                             fill=outline, width=width, tags="object")
-
-        arrow_size = 12 * self.scale
-        end_point = points[-1]
-
-        if self.direction == "left":
-            ah_angle = math.radians(45 + self.rotation)
+                for i in range(0, num_points, 3):
+                    if i + 1 >= num_points:
+                        continue
+                    t1 = i / num_points
+                    t2 = (i + 1) / num_points
+                    y1 = (t1 - 0.5) * hh * 2
+                    y2 = (t2 - 0.5) * hh * 2
+                    x1 = curve * hw * 4 * t1 * (1 - t1)
+                    x2 = curve * hw * 4 * t2 * (1 - t2)
+                    draw.line([rp(x1, y1), rp(x2, y2)], fill="#ffff00", width=2)
         else:
-            ah_angle = math.radians(-45 + self.rotation)
-
-        ah1 = end_point
-        ah2 = (end_point[0] + arrow_size * math.cos(ah_angle + math.pi/6),
-               end_point[1] + arrow_size * math.sin(ah_angle + math.pi/6))
-        ah3 = (end_point[0] + arrow_size * math.cos(ah_angle - math.pi/6),
-               end_point[1] + arrow_size * math.sin(ah_angle - math.pi/6))
-
-        canvas.create_polygon([ah1, ah2, ah3], fill=outline, outline=outline, tags="object")
-
-    def draw_to_pil(self, draw, offset_x=0, offset_y=0):
-        radius = self.base_radius * self.scale * self.width_scale
-        width = int(5 * self.scale)
-
-        segments = 20
-        points = []
-
-        for i in range(segments + 1):
-            t = i / segments
-            if self.direction == "left":
-                angle = math.radians(270 + 90 * t + self.rotation)
+            road = [rp(-hw, -hh), rp(hw, -hh), rp(hw, hh), rp(-hw, hh)]
+            draw.polygon(road, fill="#4a4a4a", outline="#000000")
+            if "4lane" in self.road_type:
+                draw.line([rp(-hw / 2, -hh), rp(-hw / 2, hh)], fill="#ffff00", width=2)
+                draw.line([rp(hw / 2, -hh), rp(hw / 2, hh)], fill="#ffff00", width=2)
+                draw.line([rp(-2, -hh), rp(-2, hh)], fill="#ffff00", width=3)
+                draw.line([rp(2, -hh), rp(2, hh)], fill="#ffff00", width=3)
             else:
-                angle = math.radians(180 + 90 * t + self.rotation)
+                for i in range(-5, 6):
+                    y1, y2 = i * hh / 5 - hh / 10, i * hh / 5 + hh / 10
+                    draw.line([rp(0, y1), rp(0, y2)], fill="#ffff00", width=2)
 
-            px = int(self.x + offset_x + radius * math.cos(angle) * abs(self.curve_amount))
-            py = int(self.y + offset_y + radius * math.sin(angle) * abs(self.curve_amount))
-            points.append((px, py))
-
-        for i in range(len(points) - 1):
-            draw.line([points[i], points[i+1]], fill="#000000", width=width)
-
-        arrow_size = 12 * self.scale
-        end_point = points[-1]
-
-        if self.direction == "left":
-            ah_angle = math.radians(45 + self.rotation)
-        else:
-            ah_angle = math.radians(-45 + self.rotation)
-
-        ah1 = end_point
-        ah2 = (int(end_point[0] + arrow_size * math.cos(ah_angle + math.pi/6)),
-               int(end_point[1] + arrow_size * math.sin(ah_angle + math.pi/6)))
-        ah3 = (int(end_point[0] + arrow_size * math.cos(ah_angle - math.pi/6)),
-               int(end_point[1] + arrow_size * math.sin(ah_angle - math.pi/6)))
-
-        draw.polygon([ah1, ah2, ah3], fill="#000000", outline="#000000")
+        # edge lines (always)
+        draw.line([rp(-hw, -hh), rp(-hw, hh)], fill="#ffffff", width=2)
+        draw.line([rp(hw, -hh), rp(hw, hh)], fill="#ffffff", width=2)
 
     def contains(self, x, y):
-        radius = self.base_radius * self.scale
-        dx = abs(x - self.x)
-        dy = abs(y - self.y)
-        return dx < radius * 1.5 and dy < radius * 1.5
+        dx, dy = x - self.x, y - self.y
+        angle = math.radians(-self.rotation)
+        lx = dx * math.cos(angle) - dy * math.sin(angle)
+        ly = dx * math.sin(angle) + dy * math.cos(angle)
+        hw = (self.base_width * self.scale * self.width_scale) / 2
+        hh = (self.base_height * self.scale * self.height_scale) / 2
+        return abs(lx) < hw and abs(ly) < hh
 
     def get_bounds(self):
-        radius = self.base_radius * self.scale * self.width_scale * abs(self.curve_amount)
-        margin = 20
-        return (self.x - radius - margin, self.y - radius - margin,
-                self.x + radius + margin, self.y + radius + margin)
+        hw = (self.base_width * self.scale * self.width_scale) / 2
+        hh = (self.base_height * self.scale * self.height_scale) / 2
+        return (self.x - hw - 20, self.y - hh - 20, self.x + hw + 20, self.y + hh + 20)
+
+
+
+class Intersection(DiagramObject):
+    """Intersection types: t_2lane, t_4lane, 4way_2lane, 4way_4lane."""
+
+    def __init__(self, x, y, intersection_type="t_2lane"):
+        super().__init__(x, y)
+        self.intersection_type = intersection_type
+        self.base_size = 100 if "2lane" in intersection_type else 200
+
+    def draw(self, canvas):
+        size = self.base_size * self.scale
+        angle = math.radians(self.rotation)
+        cos_a, sin_a = math.cos(angle), math.sin(angle)
+
+        def rp(px, py):
+            return (px * cos_a - py * sin_a + self.x, px * sin_a + py * cos_a + self.y)
+
+        lw = 3 if self.selected else 2
+        if self.intersection_type.startswith("t_"):
+            self._draw_t_intersection(canvas, rp, size, lw)
+        else:
+            self._draw_4way_intersection(canvas, rp, size, lw)
+
+    def _draw_t_intersection(self, canvas, rp, size, lw):
+        is_4lane = "4lane" in self.intersection_type
+        road_width = size if is_4lane else size / 2
+
+        vert = [rp(-road_width / 2, -size), rp(road_width / 2, -size),
+                rp(road_width / 2, size), rp(-road_width / 2, size)]
+        canvas.create_polygon(vert, fill="#4a4a4a", outline="#000000", width=lw, tags="object")
+
+        horiz = [rp(0, -road_width / 2), rp(size, -road_width / 2),
+                 rp(size, road_width / 2), rp(0, road_width / 2)]
+        canvas.create_polygon(horiz, fill="#4a4a4a", outline="#000000", width=lw, tags="object")
+
+        if is_4lane:
+            canvas.create_line(*rp(0, -size), *rp(0, size), fill="#ffff00", width=int(lw * 1.5), tags="object")
+            canvas.create_line(*rp(0, 0), *rp(size, 0), fill="#ffff00", width=int(lw * 1.5), tags="object")
+        else:
+            for i in range(-4, 5):
+                y1, y2 = i * size / 8 - size / 16, i * size / 8 + size / 16
+                if abs(y1) < size:
+                    canvas.create_line(*rp(0, y1), *rp(0, y2),
+                                       fill="#ffff00", width=int(lw * 1.2), tags="object")
+            for i in range(0, 4):
+                x1, x2 = i * size / 8, i * size / 8 + size / 16
+                canvas.create_line(*rp(x1, 0), *rp(x2, 0),
+                                   fill="#ffff00", width=int(lw * 1.2), tags="object")
+
+    def _draw_4way_intersection(self, canvas, rp, size, lw):
+        is_4lane = "4lane" in self.intersection_type
+        road_width = size if is_4lane else size / 2
+
+        vert = [rp(-road_width / 2, -size), rp(road_width / 2, -size),
+                rp(road_width / 2, size), rp(-road_width / 2, size)]
+        canvas.create_polygon(vert, fill="#4a4a4a", outline="#000000", width=lw, tags="object")
+
+        horiz = [rp(-size, -road_width / 2), rp(size, -road_width / 2),
+                 rp(size, road_width / 2), rp(-size, road_width / 2)]
+        canvas.create_polygon(horiz, fill="#4a4a4a", outline="#000000", width=lw, tags="object")
+
+        if is_4lane:
+            canvas.create_line(*rp(-road_width / 4, -size), *rp(-road_width / 4, size),
+                               fill="#ffff00", width=int(lw * 1.5), tags="object")
+            canvas.create_line(*rp(road_width / 4, -size), *rp(road_width / 4, size),
+                               fill="#ffff00", width=int(lw * 1.5), tags="object")
+            canvas.create_line(*rp(-size, -road_width / 4), *rp(size, -road_width / 4),
+                               fill="#ffff00", width=int(lw * 1.5), tags="object")
+            canvas.create_line(*rp(-size, road_width / 4), *rp(size, road_width / 4),
+                               fill="#ffff00", width=int(lw * 1.5), tags="object")
+        else:
+            for i in range(-4, 5):
+                y1, y2 = i * size / 8 - size / 16, i * size / 8 + size / 16
+                if abs(y1) < size:
+                    canvas.create_line(*rp(0, y1), *rp(0, y2),
+                                       fill="#ffff00", width=int(lw * 1.2), tags="object")
+            for i in range(-4, 5):
+                x1, x2 = i * size / 8 - size / 16, i * size / 8 + size / 16
+                if abs(x1) < size:
+                    canvas.create_line(*rp(x1, 0), *rp(x2, 0),
+                                       fill="#ffff00", width=int(lw * 1.2), tags="object")
+
+    def draw_to_pil(self, draw, offset_x=0, offset_y=0):
+        size = self.base_size * self.scale
+        angle = math.radians(self.rotation)
+        cos_a, sin_a = math.cos(angle), math.sin(angle)
+
+        def rp(px, py):
+            return (
+                int(px * cos_a - py * sin_a + self.x + offset_x),
+                int(px * sin_a + py * cos_a + self.y + offset_y),
+            )
+
+        is_4lane = "4lane" in self.intersection_type
+        road_width = size if is_4lane else size / 2
+
+        vert = [rp(-road_width / 2, -size), rp(road_width / 2, -size),
+                rp(road_width / 2, size), rp(-road_width / 2, size)]
+        draw.polygon(vert, fill="#4a4a4a", outline="#000000")
+
+        if self.intersection_type.startswith("t_"):
+            horiz = [rp(0, -road_width / 2), rp(size, -road_width / 2),
+                     rp(size, road_width / 2), rp(0, road_width / 2)]
+        else:
+            horiz = [rp(-size, -road_width / 2), rp(size, -road_width / 2),
+                     rp(size, road_width / 2), rp(-size, road_width / 2)]
+        draw.polygon(horiz, fill="#4a4a4a", outline="#000000")
+
+        if is_4lane:
+            draw.line([rp(0, -size), rp(0, size)], fill="#ffff00", width=2)
+            if self.intersection_type.startswith("t_"):
+                draw.line([rp(0, 0), rp(size, 0)], fill="#ffff00", width=2)
+            else:
+                draw.line([rp(-size, 0), rp(size, 0)], fill="#ffff00", width=2)
+
+    def contains(self, x, y):
+        dx, dy = x - self.x, y - self.y
+        size = self.base_size * self.scale
+        return abs(dx) < size and abs(dy) < size
+
+    def get_bounds(self):
+        size = self.base_size * self.scale
+        return (self.x - size - 20, self.y - size - 20, self.x + size + 20, self.y + size + 20)
+
 
 class Tree(DiagramObject):
+
     def __init__(self, x, y):
         super().__init__(x, y)
         self.base_width, self.base_height = 40, 60
@@ -1240,87 +1071,381 @@ class TextLabel(DiagramObject):
         return (self.x-w-30, self.y-h-30, self.x+w+30, self.y+h+30)
 
 class NorthArrow(DiagramObject):
-    """Simple North Arrow - just an arrow pointing up with 'N' label"""
+    """North Arrow - FIXED to be scalable and rotatable"""
     def __init__(self, x, y):
         super().__init__(x, y)
-        self.base_size = 50
+        self.base_size = 60
 
     def draw(self, canvas):
         size = self.base_size * self.scale
-        outline = "#000000"
-        lw = int(3 * self.scale) if self.selected else int(2 * self.scale)
-
-        # Calculate rotation
-        angle_rad = math.radians(self.rotation)
-        cos_a = math.cos(angle_rad)
-        sin_a = math.sin(angle_rad)
+        angle = math.radians(self.rotation)
+        cos_a, sin_a = math.cos(angle), math.sin(angle)
 
         def rp(px, py):
-            rx = px * cos_a - py * sin_a + self.x
-            ry = px * sin_a + py * cos_a + self.y
-            return (rx, ry)
+            return (px * cos_a - py * sin_a + self.x, px * sin_a + py * cos_a + self.y)
 
-        # Arrow shaft (vertical line)
-        p1 = rp(0, size/2)
-        p2 = rp(0, -size/2)
-        canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill=outline, width=lw, tags="object")
+        lw = 3 if self.selected else 2
 
-        # Arrowhead (triangle pointing up)
-        arrow_size = size * 0.4
-        ah1 = rp(0, -size/2)
-        ah2 = rp(-arrow_size/2, -size/2 + arrow_size)
-        ah3 = rp(arrow_size/2, -size/2 + arrow_size)
-        canvas.create_polygon([ah1, ah2, ah3], fill=outline, outline=outline, tags="object")
+        # Arrow shaft
+        canvas.create_line(rp(0, size/2)[0], rp(0, size/2)[1],
+                         rp(0, -size/2)[0], rp(0, -size/2)[1],
+                         fill="#000000", width=int(lw*2), tags="object")
 
-        # 'N' label above arrow
-        label_y = rp(0, -size/2 - 20*self.scale)
-        canvas.create_text(label_y[0], label_y[1], text="N",
-                          font=("Arial", int(16*self.scale), "bold"),
-                          fill=outline, tags="object")
+        # Arrow head
+        arrow_head = [rp(0, -size/2), rp(-size/6, -size/3), rp(size/6, -size/3)]
+        canvas.create_polygon(arrow_head, fill="#000000", outline="#000000", tags="object")
+
+        # "N" label above arrow
+        n_x, n_y = rp(0, -size/2 - 20)
+        canvas.create_text(n_x, n_y, text="N", font=("Arial", int(16*self.scale), "bold"),
+                         fill="#000000", tags="object")
 
     def draw_to_pil(self, draw, offset_x=0, offset_y=0):
         size = self.base_size * self.scale
-
-        # Calculate rotation
-        angle_rad = math.radians(self.rotation)
-        cos_a = math.cos(angle_rad)
-        sin_a = math.sin(angle_rad)
-
-        def rp(px, py):
-            rx = px * cos_a - py * sin_a + self.x + offset_x
-            ry = px * sin_a + py * cos_a + self.y + offset_y
-            return (int(rx), int(ry))
-
-        lw = int(3 * self.scale) if self.selected else int(2 * self.scale)
+        x, y = self.x + offset_x, self.y + offset_y
 
         # Arrow shaft
-        p1 = rp(0, size/2)
-        p2 = rp(0, -size/2)
-        draw.line([p1, p2], fill="#000000", width=lw)
+        draw.line([x, y+size/2, x, y-size/2], fill="#000000", width=3)
 
-        # Arrowhead
-        arrow_size = size * 0.4
-        ah1 = rp(0, -size/2)
-        ah2 = rp(-arrow_size/2, -size/2 + arrow_size)
-        ah3 = rp(arrow_size/2, -size/2 + arrow_size)
-        draw.polygon([ah1, ah2, ah3], fill="#000000", outline="#000000")
+        # Arrow head
+        draw.polygon([x, y-size/2, x-size/6, y-size/3, x+size/6, y-size/3], fill="#000000")
 
-        # 'N' label
-        from PIL import ImageFont
-        try:
-            font = ImageFont.truetype("arial.ttf", int(16*self.scale))
-        except:
-            font = ImageFont.load_default()
-
-        label_pos = rp(0, -size/2 - 20*self.scale)
-        draw.text(label_pos, "N", fill="#000000", font=font, anchor="mm")
+        # "N" label
+        draw.text((x-5, y-size/2-25), "N", fill="#000000")
 
     def contains(self, x, y):
-        return math.sqrt((x-self.x)**2 + (y-self.y)**2) < 40*self.scale
+        size = self.base_size * self.scale
+        return abs(x - self.x) < size/2 and abs(y - self.y) < size/2
 
     def get_bounds(self):
-        s = 50 * self.scale
-        return (self.x-s-30, self.y-s-30, self.x+s+30, self.y+s+30)
+        size = self.base_size * self.scale
+        return (self.x-size/2-10, self.y-size/2-30, self.x+size/2+10, self.y+size/2+10)
+        
+class Animal(DiagramObject):
+    """Animal (Deer) symbol - FIXED to appear on diagram"""
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.base_width = 60
+        self.base_height = 70
+
+    def draw(self, canvas):
+        w = self.base_width * self.scale * self.width_scale
+        h = self.base_height * self.scale * self.height_scale
+        angle = math.radians(self.rotation)
+        cos_a, sin_a = math.cos(angle), math.sin(angle)
+
+        def rp(px, py):
+            return (px * cos_a - py * sin_a + self.x, px * sin_a + py * cos_a + self.y)
+
+        lw = 3 if self.selected else 2
+
+        # Body (oval)
+        body_points = []
+        for i in range(20):
+            angle_i = i * math.pi * 2 / 20
+            px = math.cos(angle_i) * w/2 * 0.6
+            py = math.sin(angle_i) * h/2 * 0.4
+            body_points.append(rp(px, py))
+        canvas.create_polygon(body_points, fill="#8b4513", outline="#000000", width=lw, tags="object")
+
+        # Head (circle)
+        head_x, head_y = rp(0, -h/3)
+        canvas.create_oval(head_x-w/6, head_y-w/6, head_x+w/6, head_y+w/6,
+                         fill="#8b4513", outline="#000000", width=lw, tags="object")
+
+        # Antlers (V shapes)
+        canvas.create_line(rp(-w/8, -h/3)[0], rp(-w/8, -h/3)[1],
+                         rp(-w/4, -h/2)[0], rp(-w/4, -h/2)[1],
+                         fill="#654321", width=int(lw*1.2), tags="object")
+        canvas.create_line(rp(w/8, -h/3)[0], rp(w/8, -h/3)[1],
+                         rp(w/4, -h/2)[0], rp(w/4, -h/2)[1],
+                         fill="#654321", width=int(lw*1.2), tags="object")
+
+        # Legs (4 lines)
+        for leg_x in [-w/4, -w/6, w/6, w/4]:
+            canvas.create_line(rp(leg_x, h/4)[0], rp(leg_x, h/4)[1],
+                             rp(leg_x, h/2)[0], rp(leg_x, h/2)[1],
+                             fill="#654321", width=int(lw*1.2), tags="object")
+
+        # Tail
+        canvas.create_line(rp(w/3, 0)[0], rp(w/3, 0)[1],
+                         rp(w/2, -h/6)[0], rp(w/2, -h/6)[1],
+                         fill="#654321", width=int(lw*1.2), tags="object")
+
+    def draw_to_pil(self, draw, offset_x=0, offset_y=0):
+        w = self.base_width * self.scale * self.width_scale
+        h = self.base_height * self.scale * self.height_scale
+        x, y = self.x + offset_x, self.y + offset_y
+
+        # Body
+        draw.ellipse([x-w/3, y-h/5, x+w/3, y+h/5], fill="#8b4513", outline="#000000")
+
+        # Head
+        draw.ellipse([x-w/6, y-h/3-w/6, x+w/6, y-h/3+w/6], fill="#8b4513", outline="#000000")
+
+        # Antlers
+        draw.line([x-w/8, y-h/3, x-w/4, y-h/2], fill="#654321", width=2)
+        draw.line([x+w/8, y-h/3, x+w/4, y-h/2], fill="#654321", width=2)
+
+        # Legs
+        for leg_x in [-w/4, -w/6, w/6, w/4]:
+            draw.line([x+leg_x, y+h/4, x+leg_x, y+h/2], fill="#654321", width=2)
+
+    def contains(self, x, y):
+        w = self.base_width * self.scale * self.width_scale
+        h = self.base_height * self.scale * self.height_scale
+        return abs(x - self.x) < w/2 and abs(y - self.y) < h/2
+
+    def get_bounds(self):
+        w = self.base_width * self.scale * self.width_scale
+        h = self.base_height * self.scale * self.height_scale
+        return (self.x-w/2-10, self.y-h/2-10, self.x+w/2+10, self.y+h/2+10)
+
+
+# ============================================================================
+# ARROWS / IMPACT / MEASUREMENT / SKID MARKS
+# ============================================================================
+
+class Arrow(DiagramObject):
+    """Multi-purpose annotation symbol.
+
+    Supported arrow_type values:
+      - "straight": Single-direction arrow
+      - "curved": Curved arrow (uses curve_amount)
+      - "skid": Skid marks (uses curve_amount)
+      - "impact": Impact point marker
+      - "measure": Measurement line (double arrow)
+    """
+
+    def __init__(self, x: float, y: float, arrow_type: str = "straight"):
+        super().__init__(x, y)
+        self.arrow_type = arrow_type
+
+    @property
+    def supports_curve(self) -> bool:
+        return self.arrow_type in {"curved", "skid"}
+
+    def draw(self, canvas: tk.Canvas):
+        lw = 3 if self.selected else 2
+        if self.arrow_type == "impact":
+            self._draw_impact_tk(canvas, lw)
+        elif self.arrow_type == "measure":
+            self._draw_measure_tk(canvas, lw)
+        elif self.arrow_type == "skid":
+            self._draw_skid_tk(canvas, lw)
+        elif self.arrow_type == "curved":
+            self._draw_curved_tk(canvas, lw)
+        else:
+            self._draw_straight_tk(canvas, lw)
+
+    def draw_to_pil(self, draw: ImageDraw.ImageDraw, offset_x: float = 0, offset_y: float = 0):
+        lw = 3
+        if self.arrow_type == "impact":
+            self._draw_impact_pil(draw, offset_x, offset_y, lw)
+        elif self.arrow_type == "measure":
+            self._draw_measure_pil(draw, offset_x, offset_y, lw)
+        elif self.arrow_type == "skid":
+            self._draw_skid_pil(draw, offset_x, offset_y, lw)
+        elif self.arrow_type == "curved":
+            self._draw_curved_pil(draw, offset_x, offset_y, lw)
+        else:
+            self._draw_straight_pil(draw, offset_x, offset_y, lw)
+
+    # ---------------- Geometry ----------------
+
+    def _poly_bounds(self, pts: list[tuple[float, float]]) -> tuple[float, float, float, float]:
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        return (min(xs), min(ys), max(xs), max(ys))
+
+    def get_bounds(self):
+        if self.arrow_type == "impact":
+            r = 18 * self.scale * max(self.width_scale, self.height_scale)
+            return (self.x - r, self.y - r, self.x + r, self.y + r)
+
+        pts = self._path_points()
+        minx, miny, maxx, maxy = self._poly_bounds(pts)
+        pad = 14 * self.scale
+        return (minx - pad, miny - pad, maxx + pad, maxy + pad)
+
+    def contains(self, x, y):
+        minx, miny, maxx, maxy = self.get_bounds()
+        if not (minx <= x <= maxx and miny <= y <= maxy):
+            return False
+        # coarse hit-test: near polyline or inside impact circle
+        if self.arrow_type == "impact":
+            r = 18 * self.scale * max(self.width_scale, self.height_scale)
+            return (x - self.x) ** 2 + (y - self.y) ** 2 <= r ** 2
+        pts = self._path_points()
+        return self._near_polyline(x, y, pts, tol=10 * self.scale)
+
+    def _near_polyline(self, x: float, y: float, pts: list[tuple[float, float]], tol: float) -> bool:
+        tol2 = tol * tol
+        for i in range(len(pts) - 1):
+            x1, y1 = pts[i]
+            x2, y2 = pts[i + 1]
+            if self._dist2_point_segment(x, y, x1, y1, x2, y2) <= tol2:
+                return True
+        return False
+
+    @staticmethod
+    def _dist2_point_segment(px, py, x1, y1, x2, y2):
+        vx, vy = x2 - x1, y2 - y1
+        wx, wy = px - x1, py - y1
+        c1 = vx * wx + vy * wy
+        if c1 <= 0:
+            return (px - x1) ** 2 + (py - y1) ** 2
+        c2 = vx * vx + vy * vy
+        if c2 <= c1:
+            return (px - x2) ** 2 + (py - y2) ** 2
+        b = c1 / c2
+        bx, by = x1 + b * vx, y1 + b * vy
+        return (px - bx) ** 2 + (py - by) ** 2
+
+    def _path_points(self) -> list[tuple[float, float]]:
+        """Return world points for the primary path polyline."""
+        L = 140.0
+        if self.arrow_type == "measure":
+            # measurement: straight line
+            local = [(-L / 2, 0), (L / 2, 0)]
+        else:
+            # vertical by default
+            if self.arrow_type in {"curved", "skid"}:
+                local = []
+                n = 32
+                bend = self.curve_amount * (L * 0.18)
+                for i in range(n + 1):
+                    t = i / n
+                    y = -L / 2 + t * L
+                    x = bend * 4 * t * (1 - t)
+                    local.append((x, y))
+            else:
+                local = [(0, -L / 2), (0, L / 2)]
+        return [self._tp(lx, ly) for lx, ly in local]
+
+    def _arrow_head(self, tip: tuple[float, float], prev: tuple[float, float], size: float) -> list[tuple[float, float]]:
+        tx, ty = tip
+        px, py = prev
+        ang = math.atan2(ty - py, tx - px)
+        a1 = ang + math.radians(150)
+        a2 = ang - math.radians(150)
+        return [(tx, ty), (tx + math.cos(a1) * size, ty + math.sin(a1) * size), (tx + math.cos(a2) * size, ty + math.sin(a2) * size)]
+
+    # ---------------- Draw: straight ----------------
+
+    def _draw_straight_tk(self, canvas: tk.Canvas, lw: int):
+        pts = self._path_points()
+        canvas.create_line(*pts[0], *pts[-1], fill="#2c3e50", width=lw, tags="object")
+        head = self._arrow_head(pts[-1], pts[-2], size=18 * self.scale)
+        canvas.create_polygon(head, fill="#2c3e50", outline="#2c3e50", tags="object")
+
+    def _draw_straight_pil(self, draw: ImageDraw.ImageDraw, ox: float, oy: float, lw: int):
+        pts = self._path_points()
+        p0 = (pts[0][0] - ox, pts[0][1] - oy)
+        p1 = (pts[-1][0] - ox, pts[-1][1] - oy)
+        draw.line([p0, p1], fill=(44, 62, 80), width=lw)
+        head = self._arrow_head(pts[-1], pts[-2], size=18 * self.scale)
+        head2 = [(x - ox, y - oy) for x, y in head]
+        draw.polygon(head2, fill=(44, 62, 80), outline=(44, 62, 80))
+
+    # ---------------- Draw: curved ----------------
+
+    def _draw_curved_tk(self, canvas: tk.Canvas, lw: int):
+        pts = self._path_points()
+        for i in range(len(pts) - 1):
+            canvas.create_line(*pts[i], *pts[i + 1], fill="#2c3e50", width=lw, smooth=True, tags="object")
+        head = self._arrow_head(pts[-1], pts[-2], size=18 * self.scale)
+        canvas.create_polygon(head, fill="#2c3e50", outline="#2c3e50", tags="object")
+
+    def _draw_curved_pil(self, draw: ImageDraw.ImageDraw, ox: float, oy: float, lw: int):
+        pts = self._path_points()
+        pts2 = [(x - ox, y - oy) for x, y in pts]
+        draw.line(pts2, fill=(44, 62, 80), width=lw, joint="curve")
+        head = self._arrow_head(pts[-1], pts[-2], size=18 * self.scale)
+        head2 = [(x - ox, y - oy) for x, y in head]
+        draw.polygon(head2, fill=(44, 62, 80), outline=(44, 62, 80))
+
+    # ---------------- Draw: skid ----------------
+
+    def _draw_skid_tk(self, canvas: tk.Canvas, lw: int):
+        pts = self._path_points()
+        # two parallel tracks in local-x, implemented by offsetting in world using local normal
+        offset = 10 * self.scale * self.width_scale
+        # approximate normal using last segment orientation
+        for side in (-1, 1):
+            track = []
+            for i in range(len(pts)):
+                if i == 0:
+                    dx, dy = pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]
+                else:
+                    dx, dy = pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]
+                l = math.hypot(dx, dy) or 1.0
+                nx, ny = -dy / l, dx / l
+                track.append((pts[i][0] + nx * offset * side, pts[i][1] + ny * offset * side))
+            # dashed effect: draw short segments
+            for i in range(0, len(track) - 1, 2):
+                canvas.create_line(*track[i], *track[i + 1], fill="#1f1f1f", width=max(1, lw - 1), tags="object")
+
+    def _draw_skid_pil(self, draw: ImageDraw.ImageDraw, ox: float, oy: float, lw: int):
+        pts = self._path_points()
+        offset = 10 * self.scale * self.width_scale
+        for side in (-1, 1):
+            track = []
+            for i in range(len(pts)):
+                if i == 0:
+                    dx, dy = pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]
+                else:
+                    dx, dy = pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]
+                l = math.hypot(dx, dy) or 1.0
+                nx, ny = -dy / l, dx / l
+                track.append((pts[i][0] + nx * offset * side, pts[i][1] + ny * offset * side))
+            for i in range(0, len(track) - 1, 2):
+                p0 = (track[i][0] - ox, track[i][1] - oy)
+                p1 = (track[i + 1][0] - ox, track[i + 1][1] - oy)
+                draw.line([p0, p1], fill=(31, 31, 31), width=max(1, lw - 1))
+
+    # ---------------- Draw: impact ----------------
+
+    def _draw_impact_tk(self, canvas: tk.Canvas, lw: int):
+        r = 18 * self.scale * max(self.width_scale, self.height_scale)
+        p1 = self._tp(-r, -r)
+        p2 = self._tp(r, r)
+        p3 = self._tp(-r, r)
+        p4 = self._tp(r, -r)
+        canvas.create_oval(self.x - r, self.y - r, self.x + r, self.y + r, outline="#c0392b", width=lw, tags="object")
+        canvas.create_line(*p1, *p2, fill="#c0392b", width=lw, tags="object")
+        canvas.create_line(*p3, *p4, fill="#c0392b", width=lw, tags="object")
+
+    def _draw_impact_pil(self, draw: ImageDraw.ImageDraw, ox: float, oy: float, lw: int):
+        r = 18 * self.scale * max(self.width_scale, self.height_scale)
+        draw.ellipse([self.x - r - ox, self.y - r - oy, self.x + r - ox, self.y + r - oy], outline=(192, 57, 43), width=lw)
+        p1 = self._tp(-r, -r)
+        p2 = self._tp(r, r)
+        p3 = self._tp(-r, r)
+        p4 = self._tp(r, -r)
+        draw.line([(p1[0]-ox, p1[1]-oy), (p2[0]-ox, p2[1]-oy)], fill=(192, 57, 43), width=lw)
+        draw.line([(p3[0]-ox, p3[1]-oy), (p4[0]-ox, p4[1]-oy)], fill=(192, 57, 43), width=lw)
+
+    # ---------------- Draw: measurement ----------------
+
+    def _draw_measure_tk(self, canvas: tk.Canvas, lw: int):
+        pts = self._path_points()
+        canvas.create_line(*pts[0], *pts[1], fill="#16a085", width=lw, tags="object")
+        head1 = self._arrow_head(pts[0], pts[1], size=14 * self.scale)
+        head2 = self._arrow_head(pts[1], pts[0], size=14 * self.scale)
+        canvas.create_polygon(head1, fill="#16a085", outline="#16a085", tags="object")
+        canvas.create_polygon(head2, fill="#16a085", outline="#16a085", tags="object")
+
+    def _draw_measure_pil(self, draw: ImageDraw.ImageDraw, ox: float, oy: float, lw: int):
+        pts = self._path_points()
+        p0 = (pts[0][0] - ox, pts[0][1] - oy)
+        p1 = (pts[1][0] - ox, pts[1][1] - oy)
+        draw.line([p0, p1], fill=(22, 160, 133), width=lw)
+        head1 = [(x - ox, y - oy) for x, y in self._arrow_head(pts[0], pts[1], size=14 * self.scale)]
+        head2 = [(x - ox, y - oy) for x, y in self._arrow_head(pts[1], pts[0], size=14 * self.scale)]
+        draw.polygon(head1, fill=(22, 160, 133), outline=(22, 160, 133))
+        draw.polygon(head2, fill=(22, 160, 133), outline=(22, 160, 133))
+
 
 class ControlButton:
     def __init__(self, x, y, button_type, size=28):
@@ -1364,467 +1489,373 @@ class ControlButton:
         return math.sqrt((x-self.x)**2 + (y-self.y)**2) < self.size/2
 
 
+
 # ============================================================================
 # MAIN APPLICATION
 # ============================================================================
 
-class AccidentReconstructorApp:
+class AccidentReconstructionApp:
     def __init__(self, root):
         self.root = root
         self.root.title(f"Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION}")
         self.root.geometry("1400x900")
-        self.objects, self.selected_object, self.control_buttons = [], None, []
-        self.current_tool, self.drag_start = None, None
+
+        self.objects = []
+        self.selected_object = None
+        self.drag_data = {"x": 0, "y": 0, "item": None}
+
         self.setup_ui()
+        self.setup_canvas()
+        self.setup_bindings()
+
+        # Check for updates on startup
+        self.root.after(1000, lambda: check_for_updates_on_startup(self.root))
 
     def setup_ui(self):
+        """Setup the user interface"""
+        # Menu bar
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
+
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="New", command=self.new_diagram)
+        file_menu.add_command(label="Export PDF", command=self.export_pdf)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit)
+
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="Check for Updates", command=lambda: manual_update_check(self.root))
-        help_menu.add_separator()
-        help_menu.add_command(label=f"About (v{AutoUpdater.CURRENT_VERSION})", command=self.show_about)
+        help_menu.add_command(label="About", command=self.show_about)
 
-        # SCROLLABLE TOOLBOX
-        tool_frame = tk.Frame(self.root, width=280, bg="#ecf0f1", relief=tk.RAISED, bd=2)
-        tool_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
-        tool_frame.pack_propagate(False)
+        # Main container
+        main_container = tk.Frame(self.root)
+        main_container.pack(fill=tk.BOTH, expand=True)
 
-        canvas_tools = tk.Canvas(tool_frame, bg="#ecf0f1", highlightthickness=0)
-        scrollbar = ttk.Scrollbar(tool_frame, orient="vertical", command=canvas_tools.yview)
-        scrollable_frame = tk.Frame(canvas_tools, bg="#ecf0f1")
+        # Left panel (tools)
+        left_panel = tk.Frame(main_container, width=300, bg="#ecf0f1")
+        left_panel.pack(side=tk.LEFT, fill=tk.Y)
+        left_panel.pack_propagate(False)
+
+        # Scrollable tool panel
+        canvas_scroll = tk.Canvas(left_panel, bg="#ecf0f1", highlightthickness=0)
+        scrollbar = tk.Scrollbar(left_panel, orient="vertical", command=canvas_scroll.yview)
+        scrollable_frame = tk.Frame(canvas_scroll, bg="#ecf0f1")
 
         scrollable_frame.bind("<Configure>",
-            lambda e: canvas_tools.configure(scrollregion=canvas_tools.bbox("all")))
+                             lambda e: canvas_scroll.configure(scrollregion=canvas_scroll.bbox("all")))
 
-        canvas_tools.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas_tools.configure(yscrollcommand=scrollbar.set)
+        canvas_scroll.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_scroll.configure(yscrollcommand=scrollbar.set)
 
-        canvas_tools.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        canvas_scroll.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        def on_mousewheel(event):
-            canvas_tools.yview_scroll(int(-1*(event.delta/120)), "units")
-        canvas_tools.bind_all("<MouseWheel>", on_mousewheel)
+        # Tool sections
+        self.create_tool_sections(scrollable_frame)
 
-        # Header
-        header_frame = tk.Frame(scrollable_frame, bg="#2c3e50", height=70)
-        header_frame.pack(fill=tk.X)
-        header_frame.pack_propagate(False)
-        tk.Label(header_frame, text="Accident Reconstruction", bg="#2c3e50", fg="white",
-                font=("Arial", 13, "bold")).pack(pady=(15, 2))
-        tk.Label(header_frame, text="Professional Edition v2.4", bg="#2c3e50", fg="#ecf0f1",
-                font=("Arial", 9)).pack()
+        # Right panel (canvas)
+        right_panel = tk.Frame(main_container)
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-        # VEHICLES
-        vehicles_section = CollapsibleSection(scrollable_frame, "VEHICLES")
-        vehicles_section.pack(fill=tk.X, pady=5, padx=5)
-        vehicles_content = vehicles_section.get_content_frame()
+        # Canvas frame
+        self.canvas_frame = tk.Frame(right_panel)
+        self.canvas_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        for text, tool, color in [("Sedan", "car", "#34495e"), ("Pickup Truck", "truck", "#34495e"),
-                                  ("18-Wheeler", "semi", "#2c3e50"), ("Motorcycle", "motorcycle", "#7f8c8d")]:
-            tk.Button(vehicles_content, text=text, command=lambda t=tool: self.set_tool(t),
-                     width=28, height=2, bg=color, fg="white", font=("Arial", 9, "bold"),
-                     relief=tk.FLAT, bd=0, activebackground="#1abc9c", activeforeground="white",
-                     cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
+    def create_tool_sections(self, parent):
+        # Vehicles - NO EMOJI
+        vehicles_section = CollapsibleSection(parent, "Vehicles (5)")
+        vehicles_section.pack(fill=tk.X, padx=5, pady=2)
+        vehicles_frame = vehicles_section.get_content_frame()
 
-        # ROADS
-        roads_section = CollapsibleSection(scrollable_frame, "ROADS")
-        roads_section.pack(fill=tk.X, pady=5, padx=5)
-        roads_content = roads_section.get_content_frame()
+        tk.Button(vehicles_frame, text="Sedan", command=lambda: self.add_object("car"),
+                bg="#3498db", fg="white", font=("Arial", 10, "bold")).pack(fill=tk.X, padx=5, pady=2)
+        tk.Button(vehicles_frame, text="Pickup Truck", command=lambda: self.add_object("truck"),
+                bg="#e74c3c", fg="white", font=("Arial", 10, "bold")).pack(fill=tk.X, padx=5, pady=2)
+        tk.Button(vehicles_frame, text="18-Wheeler", command=lambda: self.add_object("semi"),
+                bg="#f39c12", fg="white", font=("Arial", 10, "bold")).pack(fill=tk.X, padx=5, pady=2)
+        tk.Button(vehicles_frame, text="Motorcycle", command=lambda: self.add_object("motorcycle"),
+                bg="#7f8c8d", fg="white", font=("Arial", 10, "bold")).pack(fill=tk.X, padx=5, pady=2)
+        tk.Button(vehicles_frame, text="ATV (NEW)", command=lambda: self.add_object("atv"),
+                bg="#8b4513", fg="white", font=("Arial", 10, "bold")).pack(fill=tk.X, padx=5, pady=2)
 
-        tk.Label(roads_content, text="Road Type:", bg="#ecf0f1", font=("Arial", 9, "bold")).pack(pady=(5, 3))
-        self.road_combo = ttk.Combobox(roads_content, values=["2-Lane Road", "4-Lane Road",
-                                       "4-Lane Highway", "Intersection"], state="readonly", width=26, font=("Arial", 9))
-        self.road_combo.set("2-Lane Road")
-        self.road_combo.pack(pady=5, padx=8)
+        # Roads & Intersections - NO EMOJI
+        roads_section = CollapsibleSection(parent, "Roads & Intersections (8)")
+        roads_section.pack(fill=tk.X, padx=5, pady=2)
+        roads_frame = roads_section.get_content_frame()
 
-        for text, tool, color in [("Straight Road", "road", "#5d6d7e"), ("Curved Road", "curved_road", "#34495e")]:
-            tk.Button(roads_content, text=text, command=lambda t=tool: self.set_tool(t),
-                     width=28, height=2, bg=color, fg="white", font=("Arial", 9, "bold"),
-                     relief=tk.FLAT, bd=0, activebackground="#1abc9c", activeforeground="white",
-                     cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
+        tk.Label(roads_frame, text="Basic Roads:", bg="#ecf0f1", font=("Arial", 9, "bold")).pack(pady=2)
+        tk.Button(roads_frame, text="2-Lane Straight", command=lambda: self.add_object("2lane_straight"),
+                bg="#4a4a4a", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(roads_frame, text="2-Lane Curved", command=lambda: self.add_object("2lane_curved"),
+                bg="#4a4a4a", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(roads_frame, text="4-Lane Straight", command=lambda: self.add_object("4lane_straight"),
+                bg="#4a4a4a", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(roads_frame, text="4-Lane Curved", command=lambda: self.add_object("4lane_curved"),
+                bg="#4a4a4a", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
 
-        # ARROWS
-        arrows_section = CollapsibleSection(scrollable_frame, "ARROWS")
-        arrows_section.pack(fill=tk.X, pady=5, padx=5)
-        arrows_content = arrows_section.get_content_frame()
+        tk.Label(roads_frame, text="Intersections (NEW):", bg="#ecf0f1", font=("Arial", 9, "bold")).pack(pady=2)
+        tk.Button(roads_frame, text="T-Intersection 2-Lane", command=lambda: self.add_object("t_2lane"),
+                bg="#2c3e50", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(roads_frame, text="T-Intersection 4-Lane", command=lambda: self.add_object("t_4lane"),
+                bg="#2c3e50", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(roads_frame, text="4-Way 2-Lane", command=lambda: self.add_object("4way_2lane"),
+                bg="#2c3e50", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(roads_frame, text="4-Way 4-Lane", command=lambda: self.add_object("4way_4lane"),
+                bg="#2c3e50", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
 
-        for text, tool, color in [("Straight Arrow", "arrow", "#2c3e50"), ("Left Turn Arrow", "turn_left", "#34495e"),
-                                  ("Right Turn Arrow", "turn_right", "#34495e"), ("Left Curve Arrow", "curve_left", "#5d6d7e"),
-                                  ("Right Curve Arrow", "curve_right", "#5d6d7e")]:
-            tk.Button(arrows_content, text=text, command=lambda t=tool: self.set_tool(t),
-                     width=28, height=2, bg=color, fg="white", font=("Arial", 9, "bold"),
-                     relief=tk.FLAT, bd=0, activebackground="#1abc9c", activeforeground="white",
-                     cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
+        # Arrows - NO EMOJI
+        arrows_section = CollapsibleSection(parent, "Arrows (5)")
+        arrows_section.pack(fill=tk.X, padx=5, pady=2)
+        arrows_frame = arrows_section.get_content_frame()
 
-        # SYMBOLS
-        symbols_section = CollapsibleSection(scrollable_frame, "SYMBOLS")
-        symbols_section.pack(fill=tk.X, pady=5, padx=5)
-        symbols_content = symbols_section.get_content_frame()
+        tk.Button(arrows_frame, text="Straight Arrow", command=lambda: self.add_object("arrow_straight"),
+                bg="#c0392b", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(arrows_frame, text="Left Turn", command=lambda: self.add_object("arrow_left"),
+                bg="#c0392b", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(arrows_frame, text="Right Turn", command=lambda: self.add_object("arrow_right"),
+                bg="#c0392b", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(arrows_frame, text="Left Curve", command=lambda: self.add_object("arrow_left_curve"),
+                bg="#c0392b", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(arrows_frame, text="Right Curve", command=lambda: self.add_object("arrow_right_curve"),
+                bg="#c0392b", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
 
-        for text, tool, color in [("Tree", "tree", "#27ae60"), ("Pedestrian", "pedestrian", "#95a5a6"),
-                                  ("Text Label", "text", "#8e44ad"), ("North Arrow", "north", "#16a085")]:
-            tk.Button(symbols_content, text=text, command=lambda t=tool: self.set_tool(t),
-                     width=28, height=2, bg=color, fg="white", font=("Arial", 9, "bold"),
-                     relief=tk.FLAT, bd=0, activebackground="#1abc9c", activeforeground="white",
-                     cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
+        # Symbols - NO EMOJI
+        symbols_section = CollapsibleSection(parent, "Symbols (5)")
+        symbols_section.pack(fill=tk.X, padx=5, pady=2)
+        symbols_frame = symbols_section.get_content_frame()
 
-        # ACTIONS
-        actions_section = CollapsibleSection(scrollable_frame, "ACTIONS")
-        actions_section.pack(fill=tk.X, pady=5, padx=5)
-        actions_content = actions_section.get_content_frame()
+        tk.Button(symbols_frame, text="Tree", command=lambda: self.add_object("tree"),
+                bg="#27ae60", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(symbols_frame, text="Pedestrian", command=lambda: self.add_object("pedestrian"),
+                bg="#f39c12", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(symbols_frame, text="Text Label", command=lambda: self.add_object("text"),
+                bg="#34495e", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(symbols_frame, text="North Arrow (NEW)", command=lambda: self.add_object("north_arrow"),
+                bg="#2980b9", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
+        tk.Button(symbols_frame, text="Animal Deer (NEW)", command=lambda: self.add_object("animal"),
+                bg="#8b4513", fg="white", font=("Arial", 9)).pack(fill=tk.X, padx=5, pady=1)
 
-        for text, command, color in [("Delete Selected", self.delete_selected, "#c0392b"), ("Clear All", self.clear_all, "#e74c3c")]:
-            tk.Button(actions_content, text=text, command=command, width=28, height=2, bg=color, fg="white",
-                     font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0, activebackground="#e74c3c",
-                     activeforeground="white", cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
+        # Controls - NO EMOJI
+        controls_section = CollapsibleSection(parent, "Controls")
+        controls_section.pack(fill=tk.X, padx=5, pady=2)
+        controls_frame = controls_section.get_content_frame()
 
-        # EXPORT
-        export_section = CollapsibleSection(scrollable_frame, "EXPORT")
-        export_section.pack(fill=tk.X, pady=5, padx=5)
-        export_content = export_section.get_content_frame()
+        tk.Button(controls_frame, text="Delete Selected", command=self.delete_selected,
+                bg="#e74c3c", fg="white", font=("Arial", 10, "bold")).pack(fill=tk.X, padx=5, pady=2)
+        tk.Button(controls_frame, text="Clear All", command=self.clear_all,
+                bg="#c0392b", fg="white", font=("Arial", 10, "bold")).pack(fill=tk.X, padx=5, pady=2)
 
-        tk.Button(export_content, text="Export to PDF", command=self.export_pdf, width=28, height=2,
-                 bg="#27ae60", fg="white", font=("Arial", 9, "bold"), relief=tk.FLAT, bd=0,
-                 activebackground="#229954", activeforeground="white", cursor="hand2").pack(pady=4, padx=8, fill=tk.X)
-
-        tk.Label(scrollable_frame, text="", bg="#ecf0f1", height=2).pack()
-
-        # CANVAS
-        canvas_frame = tk.Frame(self.root, bg="#bdc3c7", relief=tk.SUNKEN, bd=2)
-        canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        self.canvas = tk.Canvas(canvas_frame, bg="white", highlightthickness=0)
+    def setup_canvas(self):
+        """Setup the drawing canvas"""
+        self.canvas = tk.Canvas(self.canvas_frame, bg="white", cursor="cross")
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # Events
+        # Grid
+        for i in range(0, 2000, 50):
+            self.canvas.create_line(i, 0, i, 2000, fill="#e0e0e0", tags="grid")
+            self.canvas.create_line(0, i, 2000, i, fill="#e0e0e0", tags="grid")
+
+    def setup_bindings(self):
+        """Setup event bindings"""
         self.canvas.bind("<Button-1>", self.on_canvas_click)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
-        self.canvas.bind("<Button-3>", self.on_right_click)
         self.root.bind("<Delete>", lambda e: self.delete_selected())
         self.root.bind("<r>", lambda e: self.rotate_selected())
         self.root.bind("<R>", lambda e: self.rotate_selected(-15))
+        self.root.bind("<plus>", lambda e: self.scale_selected_up())
+        self.root.bind("<minus>", lambda e: self.scale_selected_down())
 
-        # Status bar
-        status_frame = tk.Frame(self.root, bg="#34495e", height=35)
-        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        status_frame.pack_propagate(False)
+    def add_object(self, obj_type):
+        """Add object to canvas"""
+        x, y = 400, 400
 
-        self.status_label = tk.Label(status_frame, text="Ready | Select a tool and click on canvas to place objects",
-                                     bd=0, anchor=tk.W, bg="#ecf0f1", fg="#2c3e50", font=("Arial", 9), padx=10)
-        self.status_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=2, pady=2)
-
-        legend_text = "Controls: R+ Rotate | + Size | W+ Width | H+ Height | C+ Curve | [R] Key | [Del] Delete"
-        tk.Label(status_frame, text=legend_text, bg="#34495e", fg="white",
-                font=("Arial", 8), padx=15).pack(side=tk.RIGHT, pady=2)
-
-    def set_tool(self, tool):
-        self.current_tool = tool
-        tool_names = {"car": "Sedan", "truck": "Pickup Truck", "semi": "18-Wheeler", "motorcycle": "Motorcycle",
-                     "pedestrian": "Pedestrian", "tree": "Tree", "road": "Straight Road", "curved_road": "Curved Road",
-                     "arrow": "Straight Arrow", "turn_left": "Left Turn Arrow", "turn_right": "Right Turn Arrow",
-                     "curve_left": "Left Curve Arrow", "curve_right": "Right Curve Arrow", "text": "Text Label", 
-                     "north": "North Arrow"}
-        self.status_label.config(text=f"Tool: {tool_names.get(tool, tool)} - Click canvas to place")
-
-    def create_control_buttons(self):
-        self.control_buttons = []
-        if not self.selected_object:
-            return
-        x1, y1, x2, y2 = self.selected_object.get_bounds()
-        cx, cy = (x1+x2)/2, (y1+y2)/2
-        has_curve = isinstance(self.selected_object, (CurvedRoad, CurveArrow))
-
-        if has_curve:
-            self.control_buttons = [
-                ControlButton(cx, y1-20, "rotate_ccw"), ControlButton(x2+20, cy-25, "width_up"),
-                ControlButton(x2+20, cy, "scale_up"), ControlButton(x2+20, cy+25, "curve_up"),
-                ControlButton(cx+15, y2+20, "height_up"), ControlButton(cx-15, y2+20, "rotate_cw"),
-                ControlButton(x1-20, cy+25, "curve_down"), ControlButton(x1-20, cy, "scale_down"),
-                ControlButton(x1-20, cy-25, "width_down"), ControlButton(cx, y1-50, "height_down")
-            ]
+        if obj_type in ["car", "truck", "semi", "motorcycle", "atv"]:
+            obj = Vehicle(x, y, obj_type)
+        elif obj_type.startswith("2lane") or obj_type.startswith("4lane"):
+            obj = Road(x, y, obj_type)
+        elif obj_type.startswith("t_") or obj_type.startswith("4way_"):
+            obj = Intersection(x, y, obj_type)
+        elif obj_type.startswith("arrow_"):
+            arrow_type = obj_type.replace("arrow_", "")
+            obj = Arrow(x, y, arrow_type)
+        elif obj_type == "tree":
+            obj = Tree(x, y)
+        elif obj_type == "pedestrian":
+            obj = Pedestrian(x, y)
+        elif obj_type == "text":
+            text = simpledialog.askstring("Text Label", "Enter text:", parent=self.root)
+            if not text:
+                return
+            obj = TextLabel(x, y, text)
+        elif obj_type == "north_arrow":
+            obj = NorthArrow(x, y)
+        elif obj_type == "animal":  # CRITICAL: Add this case
+            obj = Animal(x, y)
         else:
-            self.control_buttons = [
-                ControlButton(cx, y1-20, "rotate_ccw"), ControlButton(x2+20, cy-15, "width_up"),
-                ControlButton(x2+20, cy+15, "scale_up"), ControlButton(cx+15, y2+20, "height_up"),
-                ControlButton(cx-15, y2+20, "rotate_cw"), ControlButton(x1-20, cy+15, "scale_down"),
-                ControlButton(x1-20, cy-15, "width_down"), ControlButton(cx, y1-50, "height_down")
-            ]
+            return
 
-    def draw_control_buttons(self):
-        for button in self.control_buttons:
-            button.draw(self.canvas)
+        self.objects.append(obj)
+        self.redraw()
+
 
     def on_canvas_click(self, event):
-        for button in self.control_buttons:
-            if button.contains(event.x, event.y):
-                self.handle_control_button(button.button_type)
-                return
-        clicked_obj = None
-        for obj in reversed(self.objects):
-            if obj.contains(event.x, event.y):
-                clicked_obj = obj
-                break
-        if clicked_obj:
-            if self.selected_object:
-                self.selected_object.selected = False
-            self.selected_object = clicked_obj
-            self.selected_object.selected = True
-            self.drag_start = (event.x, event.y)
-            self.create_control_buttons()
-            self.redraw()
-            self.update_status()
-        elif self.current_tool:
-            self.add_object(event.x, event.y)
-            self.current_tool = None
-            self.status_label.config(text="Ready")
-        else:
-            if self.selected_object:
-                self.selected_object.selected = False
-                self.selected_object = None
-                self.control_buttons = []
-                self.redraw()
-                self.status_label.config(text="Ready")
+        """Handle canvas click"""
+        x, y = event.x, event.y
 
-    def handle_control_button(self, button_type):
-        if not self.selected_object:
-            return
-        actions = {
-            "rotate_cw": lambda: self.selected_object.rotate(15), "rotate_ccw": lambda: self.selected_object.rotate(-15),
-            "scale_up": lambda: self.selected_object.scale_up(), "scale_down": lambda: self.selected_object.scale_down(),
-            "width_up": lambda: self.selected_object.width_up(), "width_down": lambda: self.selected_object.width_down(),
-            "height_up": lambda: self.selected_object.height_up(), "height_down": lambda: self.selected_object.height_down(),
-            "curve_up": lambda: self.selected_object.curve_up(), "curve_down": lambda: self.selected_object.curve_down()
-        }
-        if button_type in actions:
-            actions[button_type]()
-            self.create_control_buttons()
-            self.redraw()
-            self.update_status()
+        # Deselect all
+        for obj in self.objects:
+            obj.selected = False
+
+        # Find clicked object
+        for obj in reversed(self.objects):
+            if obj.contains(x, y):
+                obj.selected = True
+                self.selected_object = obj
+                self.drag_data = {"x": x, "y": y, "item": obj}
+                self.redraw()
+                return
+
+        self.selected_object = None
+        self.redraw()
 
     def on_canvas_drag(self, event):
-        if self.selected_object and self.drag_start:
-            dx, dy = event.x - self.drag_start[0], event.y - self.drag_start[1]
-            self.selected_object.move(dx, dy)
-            self.drag_start = (event.x, event.y)
-            self.create_control_buttons()
+        """Handle canvas drag"""
+        if self.drag_data["item"]:
+            dx = event.x - self.drag_data["x"]
+            dy = event.y - self.drag_data["y"]
+            self.drag_data["item"].move(dx, dy)
+            self.drag_data["x"] = event.x
+            self.drag_data["y"] = event.y
             self.redraw()
 
     def on_canvas_release(self, event):
-        self.drag_start = None
-
-    def on_right_click(self, event):
-        if self.selected_object:
-            self.selected_object.rotate(15)
-            self.create_control_buttons()
-            self.redraw()
-            self.update_status()
+        """Handle canvas release"""
+        self.drag_data = {"x": 0, "y": 0, "item": None}
 
     def rotate_selected(self, angle=15):
+        """Rotate selected object"""
         if self.selected_object:
             self.selected_object.rotate(angle)
-            self.create_control_buttons()
             self.redraw()
-            self.update_status()
 
-    def update_status(self):
+    def scale_selected_up(self):
+        """Scale up selected object"""
         if self.selected_object:
-            obj_type = type(self.selected_object).__name__
-            status_text = f"{obj_type} | Rot: {self.selected_object.rotation:.0f}Â° | Scale: {self.selected_object.scale:.2f}x"
-            if hasattr(self.selected_object, 'curve_amount') and isinstance(self.selected_object, (CurvedRoad, CurveArrow)):
-                status_text += f" | Curve: {self.selected_object.curve_amount:.1f}"
-            self.status_label.config(text=status_text)
-
-    def add_object(self, x, y):
-        obj = None
-        if self.current_tool in ["car", "truck", "semi", "motorcycle"]:
-            obj = Vehicle(x, y, self.current_tool)
-        elif self.current_tool == "tree":
-            obj = Tree(x, y)
-        elif self.current_tool == "pedestrian":
-            obj = Pedestrian(x, y)
-        elif self.current_tool == "road":
-            obj = Road(x, y, self.road_combo.get())
-        elif self.current_tool == "curved_road":
-            obj = CurvedRoad(x, y, self.road_combo.get())
-        elif self.current_tool == "arrow":
-            obj = Arrow(x, y)
-        elif self.current_tool == "turn_left":
-            obj = TurnArrow(x, y, "left")
-        elif self.current_tool == "turn_right":
-            obj = TurnArrow(x, y, "right")
-        elif self.current_tool == "curve_left":
-            obj = CurveArrow(x, y, "left")
-        elif self.current_tool == "curve_right":
-            obj = CurveArrow(x, y, "right")
-        elif self.current_tool == "text":
-            text = simpledialog.askstring("Text Label", "Enter text:")
-            if text:
-                obj = TextLabel(x, y, text)
-        elif self.current_tool == "north":
-            obj = NorthArrow(x, y)
-
-        if obj:
-            self.objects.append(obj)
-            if self.selected_object:
-                self.selected_object.selected = False
-            self.selected_object = obj
-            obj.selected = True
-            self.create_control_buttons()
+            self.selected_object.scale_up()
             self.redraw()
-            self.update_status()
+
+    def scale_selected_down(self):
+        """Scale down selected object"""
+        if self.selected_object:
+            self.selected_object.scale_down()
+            self.redraw()
 
     def delete_selected(self):
+        """Delete selected object"""
         if self.selected_object:
             self.objects.remove(self.selected_object)
             self.selected_object = None
-            self.control_buttons = []
             self.redraw()
-            self.status_label.config(text="Object deleted")
 
     def clear_all(self):
-        if messagebox.askyesno("Clear All", "Clear all objects from the diagram?"):
-            self.objects.clear()
+        """Clear all objects"""
+        if messagebox.askyesno("Clear All", "Delete all objects?", parent=self.root):
+            self.objects = []
             self.selected_object = None
-            self.control_buttons = []
             self.redraw()
-            self.status_label.config(text="Diagram cleared")
+
+    def new_diagram(self):
+        """New diagram"""
+        if messagebox.askyesno("New Diagram", "Clear current diagram?", parent=self.root):
+            self.clear_all()
 
     def redraw(self):
+        """Redraw canvas"""
         self.canvas.delete("object")
-        self.canvas.delete("control")
         for obj in self.objects:
             obj.draw(self.canvas)
-        self.draw_control_buttons()
 
     def export_pdf(self):
-        """Export diagram to PDF with actual canvas content"""
-        filename = filedialog.asksaveasfilename(
-            defaultextension=".pdf",
-            filetypes=[("PDF files", "*.pdf")],
-            initialfile=f"AccidentDiagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        )
+        """Export to PDF"""
+        filename = filedialog.asksaveasfilename(defaultextension=".pdf",
+                                               filetypes=[("PDF files", "*.pdf")],
+                                               parent=self.root)
         if not filename:
             return
 
         try:
-            # Get canvas dimensions
-            self.canvas.update()
-            canvas_width = self.canvas.winfo_width()
-            canvas_height = self.canvas.winfo_height()
-
-            # Find bounding box of all objects
-            if self.objects:
-                min_x = min(obj.get_bounds()[0] for obj in self.objects)
-                min_y = min(obj.get_bounds()[1] for obj in self.objects)
-                max_x = max(obj.get_bounds()[2] for obj in self.objects)
-                max_y = max(obj.get_bounds()[3] for obj in self.objects)
-
-                # Add margin
-                margin = 50
-                min_x = max(0, min_x - margin)
-                min_y = max(0, min_y - margin)
-                max_x = min(canvas_width, max_x + margin)
-                max_y = min(canvas_height, max_y + margin)
-
-                diagram_width = int(max_x - min_x)
-                diagram_height = int(max_y - min_y)
-            else:
-                min_x, min_y = 0, 0
-                diagram_width, diagram_height = canvas_width, canvas_height
-
-            # Create PIL image of diagram
-            img = Image.new('RGB', (diagram_width, diagram_height), 'white')
-            draw = ImageDraw.Draw(img)
-
-            # Draw all objects to PIL image
-            for obj in self.objects:
-                obj.draw_to_pil(draw, offset_x=-min_x, offset_y=-min_y)
-
-            # Save image to temporary file
-            temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-            temp_img_path = temp_img.name
-            temp_img.close()
-            img.save(temp_img_path, 'PNG')
-
             # Create PDF
             c = pdf_canvas.Canvas(filename, pagesize=letter)
-            page_width, page_height = letter
+            width, height = letter
 
             # Title
-            c.setFont("Helvetica-Bold", 18)
-            c.drawString(50, page_height - 50, "Accident Reconstruction Diagram")
-
-            # Metadata
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(50, height - 50, "Accident Reconstruction Diagram")
             c.setFont("Helvetica", 10)
-            c.drawString(50, page_height - 70, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            c.drawString(50, page_height - 85, f"Created with: Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION}")
+            c.drawString(50, height - 70, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            c.drawString(50, height - 85, f"Version: {AutoUpdater.CURRENT_VERSION}")
 
-            # Line separator
-            c.setStrokeColorRGB(0.5, 0.5, 0.5)
-            c.setLineWidth(1)
-            c.line(50, page_height - 95, page_width - 50, page_height - 95)
+            # Draw objects to PIL image
+            img = Image.new('RGB', (800, 600), 'white')
+            draw = ImageDraw.Draw(img)
 
-            # Calculate scaling to fit diagram on page
-            max_img_width = page_width - 100
-            max_img_height = page_height - 200
+            # Find bounds
+            if self.objects:
+                min_x = min(obj.x for obj in self.objects) - 100
+                min_y = min(obj.y for obj in self.objects) - 100
+                max_x = max(obj.x for obj in self.objects) + 100
+                max_y = max(obj.y for obj in self.objects) + 100
 
-            scale = min(max_img_width / diagram_width, max_img_height / diagram_height, 1.0)
+                # Scale to fit
+                scale_x = 700 / (max_x - min_x) if max_x > min_x else 1
+                scale_y = 500 / (max_y - min_y) if max_y > min_y else 1
+                scale = min(scale_x, scale_y, 1.0)
 
-            scaled_width = diagram_width * scale
-            scaled_height = diagram_height * scale
+                offset_x = 50 - min_x * scale
+                offset_y = 50 - min_y * scale
 
-            # Center the image
-            x_pos = (page_width - scaled_width) / 2
-            y_pos = page_height - 150 - scaled_height
+                # Draw objects
+                for obj in self.objects:
+                    obj.draw_to_pil(draw, offset_x, offset_y)
 
-            # Add diagram image to PDF
-            c.drawImage(temp_img_path, x_pos, y_pos, width=scaled_width, height=scaled_height)
-
-            # Footer
-            c.setFont("Helvetica-Oblique", 8)
-            c.drawString(50, 30, f"Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION} | Galaxy AI")
+            # Add image to PDF
+            img_buffer = io.BytesIO()
+            img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            c.drawImage(ImageReader(img_buffer), 50, height - 700, width=700, height=500)
 
             c.save()
-
-            # Clean up temp file
-            try:
-                os.remove(temp_img_path)
-            except:
-                pass
-
-            messagebox.showinfo("Success", f"PDF exported successfully!\n\nSaved to: {filename}")
-
+            messagebox.showinfo("Success", f"PDF saved: {filename}", parent=self.root)
         except Exception as e:
-            messagebox.showerror("Export Error", f"Failed to export PDF:\n{str(e)}")
+            messagebox.showerror("Error", f"Failed to export PDF: {e}", parent=self.root)
 
     def show_about(self):
-        about = f"""Accident Reconstruction Tool
-Professional Edition
+        """Show about dialog"""
+        about_text = f"""Accident Reconstruction Tool
+Version {AutoUpdater.CURRENT_VERSION}
 
-Version: {AutoUpdater.CURRENT_VERSION}
-Author: Galaxy AI
+Professional accident reconstruction software
 
 Features:
-â€¢ 4 Realistic Top-Down Vehicles
-â€¢ 6 Road Types
+â€¢ 5 Vehicle Types (Car, Truck, Semi, Motorcycle, ATV)
+â€¢ 8 Road Types (4 Basic + 4 Intersections)
 â€¢ 5 Arrow Types
-â€¢ Symbols & Labels
-â€¢ Simple North Arrow (N)
-â€¢ Auto-Update (Fixed)
-â€¢ Collapsible Sections
-â€¢ Professional UI
-â€¢ Full PDF Export with Diagram"""
-        messagebox.showinfo("About", about, parent=self.root)
+â€¢ 5 Symbol Types (Tree, Pedestrian, Text, North Arrow, Animal)
+â€¢ PDF Export
+â€¢ Auto-Update
 
-def main():
-    root = tk.Tk()
-    app = AccidentReconstructorApp(root)
-    root.after(1000, lambda: check_for_updates_on_startup(root))
-    root.mainloop()
+Author: Galaxy AI
+Date: February 2026"""
+        messagebox.showinfo("About", about_text, parent=self.root)
+
+# ============================================================================
+# MAIN ENTRY POINT
+# ============================================================================
 
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = AccidentReconstructionApp(root)
+    root.mainloop()
