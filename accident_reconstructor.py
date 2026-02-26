@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Accident Reconstruction Diagram Tool - COMPLETE VERSION WITH AUTO-UPDATE
-=========================================================================
-Professional accident reconstruction software with auto-update capability
+Accident Reconstruction Diagram Tool - COMPLETE VERSION
+========================================================
+Professional accident reconstruction software with auto-update
 
 Version: 2.0.0
 Author: Galaxy AI
@@ -33,12 +33,10 @@ import subprocess
 class AutoUpdater:
     """Auto-update functionality"""
 
-    # REPLACE WITH YOUR GITHUB INFO
     GITHUB_USER = "omerta7z"
     GITHUB_REPO = "accident-reconstructor"
     VERSION_FILE = "https://raw.githubusercontent.com/{user}/{repo}/main/version.json"
-    DOWNLOAD_URL = "https://raw.githubusercontent.com/{user}/{repo}/main/accident_reconstructor.py"
-
+    DOWNLOAD_URL = "https://raw.githubusercontent.com/{user}/{repo}/main/AccidentReconstructor.py"
     CURRENT_VERSION = "2.0.0"
 
     @classmethod
@@ -159,19 +157,16 @@ class UpdateDialog:
             self.progress_label.config(text="Installing update...")
             self.dialog.update()
             if AutoUpdater.apply_update(new_file):
-                messagebox.showinfo("Update Complete",
-                                   "Update installed!\n\nRestarting...",
+                messagebox.showinfo("Update Complete", "Update installed!\n\nRestarting...",
                                    parent=self.dialog)
                 python = sys.executable
                 subprocess.Popen([python] + sys.argv)
                 sys.exit(0)
             else:
-                messagebox.showerror("Update Failed", "Failed to install update.",
-                                    parent=self.dialog)
+                messagebox.showerror("Update Failed", "Failed to install update.", parent=self.dialog)
                 self.dialog.destroy()
         else:
-            messagebox.showerror("Download Failed", "Failed to download update.",
-                                parent=self.dialog)
+            messagebox.showerror("Download Failed", "Failed to download update.", parent=self.dialog)
             self.dialog.destroy()
 
     def update_later(self):
@@ -290,6 +285,289 @@ class Vehicle(DiagramObject):
         return (self.x-hw-30, self.y-hh-30, self.x+hw+30, self.y+hh+30)
 
 
+class Road(DiagramObject):
+    def __init__(self, x, y, road_type="2-Lane Road"):
+        super().__init__(x, y)
+        self.road_type = road_type
+
+    def draw(self, canvas):
+        s = self.scale
+        w_s = self.width_scale
+        h_s = self.height_scale
+
+        angle_rad = math.radians(self.rotation)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        def rp(px, py):
+            rx = px * cos_a - py * sin_a + self.x
+            ry = px * sin_a + py * cos_a + self.y
+            return (rx, ry)
+
+        outline = "#000000"
+        width = int(3 * s) if self.selected else int(2 * s)
+
+        length = 200 * s * w_s
+        road_width = 25 * s * h_s
+        if "4-Lane" in self.road_type:
+            road_width = 40 * s * h_s
+
+        corners = [(-length, -road_width/2), (length, -road_width/2),
+                  (length, road_width/2), (-length, road_width/2)]
+        rotated = [rp(cx, cy) for cx, cy in corners]
+        canvas.create_polygon(rotated, fill="#808080", outline=outline, width=width, tags="object")
+
+        p1 = rp(-length, 0)
+        p2 = rp(length, 0)
+        canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill="#ffffff",
+                          width=int(2*s), dash=(10, 5), tags="object")
+
+    def contains(self, x, y):
+        dx = x - self.x
+        dy = y - self.y
+        angle_rad = math.radians(-self.rotation)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        local_x = dx * cos_a - dy * sin_a
+        local_y = dx * sin_a + dy * cos_a
+
+        length = 200 * self.scale * self.width_scale
+        width = 40 * self.scale * self.height_scale if "4-Lane" in self.road_type else 25 * self.scale * self.height_scale
+        return abs(local_x) < length and abs(local_y) < width
+
+    def get_bounds(self):
+        length = 200 * self.scale * self.width_scale
+        width = 40 * self.scale * self.height_scale if "4-Lane" in self.road_type else 25 * self.scale * self.height_scale
+        margin = 30
+        return (self.x - length - margin, self.y - width - margin,
+                self.x + length + margin, self.y + width + margin)
+
+
+class CurvedRoad(DiagramObject):
+    def __init__(self, x, y, road_type="2-Lane Road"):
+        super().__init__(x, y)
+        self.road_type = road_type
+        self.curve_amount = 0.5
+
+    def draw(self, canvas):
+        s = self.scale
+        w_s = self.width_scale
+        h_s = self.height_scale
+        curve = self.curve_amount
+
+        angle_rad = math.radians(self.rotation)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        def rp(px, py):
+            rx = px * cos_a - py * sin_a + self.x
+            ry = px * sin_a + py * cos_a + self.y
+            return (rx, ry)
+
+        outline = "#000000"
+        width = int(3 * s) if self.selected else int(2 * s)
+
+        length = 200 * s * w_s
+        road_width = 25 * s * h_s
+        if "4-Lane" in self.road_type:
+            road_width = 40 * s * h_s
+
+        segments = 20
+        points_top = []
+        points_bottom = []
+
+        for i in range(segments + 1):
+            t = i / segments
+            x_pos = -length + 2 * length * t
+            y_curve = curve * 100 * s * (t * (1 - t) * 4)
+
+            pt_top = rp(x_pos, -road_width/2 + y_curve)
+            points_top.append(pt_top)
+
+            pt_bottom = rp(x_pos, road_width/2 + y_curve)
+            points_bottom.append(pt_bottom)
+
+        all_points = points_top + list(reversed(points_bottom))
+        canvas.create_polygon(all_points, fill="#808080", outline=outline, width=width, tags="object")
+
+        center_points = []
+        for i in range(segments + 1):
+            t = i / segments
+            x_pos = -length + 2 * length * t
+            y_curve = curve * 100 * s * (t * (1 - t) * 4)
+            pt = rp(x_pos, y_curve)
+            center_points.append(pt)
+
+        for i in range(len(center_points) - 1):
+            if i % 2 == 0:
+                canvas.create_line(center_points[i][0], center_points[i][1],
+                                 center_points[i+1][0], center_points[i+1][1],
+                                 fill="#ffffff", width=int(2*s), tags="object")
+
+    def contains(self, x, y):
+        length = 200 * self.scale * self.width_scale
+        width = 40 * self.scale * self.height_scale
+        dx = abs(x - self.x)
+        dy = abs(y - self.y)
+        return dx < length and dy < width + abs(self.curve_amount * 50)
+
+    def get_bounds(self):
+        length = 200 * self.scale * self.width_scale
+        width = 40 * self.scale * self.height_scale
+        curve_offset = abs(self.curve_amount * 50)
+        margin = 30
+        return (self.x - length - margin, self.y - width - curve_offset - margin,
+                self.x + length + margin, self.y + width + curve_offset + margin)
+
+
+class Arrow(DiagramObject):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.base_length = 80
+
+    def draw(self, canvas):
+        length = self.base_length * self.scale * self.width_scale
+        angle_rad = math.radians(self.rotation)
+
+        x2 = self.x + length * math.cos(angle_rad)
+        y2 = self.y + length * math.sin(angle_rad)
+
+        outline = "#000000"
+        width = int(5 * self.scale * self.height_scale)
+        arrow_size = int(16 * self.scale)
+
+        canvas.create_line(self.x, self.y, x2, y2, fill=outline, width=width,
+                          arrow=tk.LAST, arrowshape=(arrow_size, arrow_size+4, arrow_size//2),
+                          tags="object")
+
+    def contains(self, x, y):
+        length = self.base_length * self.scale * self.width_scale
+        dx = x - self.x
+        dy = y - self.y
+        return abs(dx) < length and abs(dy) < 20 * self.scale
+
+    def get_bounds(self):
+        length = self.base_length * self.scale * self.width_scale
+        margin = 30
+        return (self.x - margin, self.y - 20 * self.scale - margin,
+                self.x + length + margin, self.y + 20 * self.scale + margin)
+
+
+class TurnArrow(DiagramObject):
+    def __init__(self, x, y, direction="left"):
+        super().__init__(x, y)
+        self.direction = direction
+        self.base_size = 60
+
+    def draw(self, canvas):
+        size = self.base_size * self.scale
+        angle_rad = math.radians(self.rotation)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        def rp(px, py):
+            rx = px * cos_a - py * sin_a + self.x
+            ry = px * sin_a + py * cos_a + self.y
+            return (rx, ry)
+
+        outline = "#000000"
+        width = int(5 * self.scale)
+
+        p1 = rp(0, size/2)
+        p2 = rp(0, -size/4)
+        canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill=outline, width=width, tags="object")
+
+        if self.direction == "left":
+            p3 = rp(-size/2, -size/4)
+        else:
+            p3 = rp(size/2, -size/4)
+
+        canvas.create_line(p2[0], p2[1], p3[0], p3[1], fill=outline, width=width, tags="object")
+
+        arrow_size = int(12 * self.scale)
+        if self.direction == "left":
+            ah = [rp(-size/2, -size/4), rp(-size/2 + arrow_size, -size/4 - arrow_size/2),
+                  rp(-size/2 + arrow_size, -size/4 + arrow_size/2)]
+        else:
+            ah = [rp(size/2, -size/4), rp(size/2 - arrow_size, -size/4 - arrow_size/2),
+                  rp(size/2 - arrow_size, -size/4 + arrow_size/2)]
+
+        canvas.create_polygon(ah, fill=outline, outline=outline, tags="object")
+
+    def contains(self, x, y):
+        size = self.base_size * self.scale
+        dx = abs(x - self.x)
+        dy = abs(y - self.y)
+        return dx < size and dy < size
+
+    def get_bounds(self):
+        size = self.base_size * self.scale
+        margin = 20
+        return (self.x - size - margin, self.y - size - margin,
+                self.x + size + margin, self.y + size + margin)
+
+
+class CurveArrow(DiagramObject):
+    def __init__(self, x, y, direction="left"):
+        super().__init__(x, y)
+        self.direction = direction
+        self.base_radius = 50
+        self.curve_amount = 1.0
+
+    def draw(self, canvas):
+        radius = self.base_radius * self.scale * self.width_scale
+
+        outline = "#000000"
+        width = int(5 * self.scale)
+
+        segments = 20
+        points = []
+
+        for i in range(segments + 1):
+            t = i / segments
+            if self.direction == "left":
+                angle = math.radians(270 + 90 * t + self.rotation)
+            else:
+                angle = math.radians(180 + 90 * t + self.rotation)
+
+            px = self.x + radius * math.cos(angle) * abs(self.curve_amount)
+            py = self.y + radius * math.sin(angle) * abs(self.curve_amount)
+            points.append((px, py))
+
+        for i in range(len(points) - 1):
+            canvas.create_line(points[i][0], points[i][1], points[i+1][0], points[i+1][1],
+                             fill=outline, width=width, tags="object")
+
+        arrow_size = 12 * self.scale
+        end_point = points[-1]
+
+        if self.direction == "left":
+            ah_angle = math.radians(45 + self.rotation)
+        else:
+            ah_angle = math.radians(-45 + self.rotation)
+
+        ah1 = end_point
+        ah2 = (end_point[0] + arrow_size * math.cos(ah_angle + math.pi/6),
+               end_point[1] + arrow_size * math.sin(ah_angle + math.pi/6))
+        ah3 = (end_point[0] + arrow_size * math.cos(ah_angle - math.pi/6),
+               end_point[1] + arrow_size * math.sin(ah_angle - math.pi/6))
+
+        canvas.create_polygon([ah1, ah2, ah3], fill=outline, outline=outline, tags="object")
+
+    def contains(self, x, y):
+        radius = self.base_radius * self.scale
+        dx = abs(x - self.x)
+        dy = abs(y - self.y)
+        return dx < radius * 1.5 and dy < radius * 1.5
+
+    def get_bounds(self):
+        radius = self.base_radius * self.scale * self.width_scale * abs(self.curve_amount)
+        margin = 20
+        return (self.x - radius - margin, self.y - radius - margin,
+                self.x + radius + margin, self.y + radius + margin)
+
+
 class Tree(DiagramObject):
     def __init__(self, x, y):
         super().__init__(x, y)
@@ -297,14 +575,15 @@ class Tree(DiagramObject):
 
     def draw(self, canvas):
         s = self.scale
-        tw, th = 8*s*self.width_scale, 25*s*self.height_scale
-        canvas.create_rectangle(self.x-tw/2, self.y-th/2, self.x+tw/2, self.y+th/2,
+        trunk_w, trunk_h = 8*s*self.width_scale, 25*s*self.height_scale
+        canvas.create_rectangle(self.x-trunk_w/2, self.y-trunk_h/2, self.x+trunk_w/2, self.y+trunk_h/2,
                                fill="#a0a0a0", outline="#000000", tags="object")
-        cr = 20 * s
-        cy = self.y - th/2 - cr*0.7
-        for oy in [0, -cr*0.3, cr*0.2]:
-            for ox in [0, -cr*0.2, cr*0.2]:
-                canvas.create_oval(self.x+ox-cr, cy+oy-cr, self.x+ox+cr, cy+oy+cr,
+        crown_r = 20 * s
+        crown_y = self.y - trunk_h/2 - crown_r*0.7
+        for oy in [0, -crown_r*0.3, crown_r*0.2]:
+            for ox in [0, -crown_r*0.2, crown_r*0.2]:
+                canvas.create_oval(self.x+ox-crown_r, crown_y+oy-crown_r,
+                                 self.x+ox+crown_r, crown_y+oy+crown_r,
                                  fill="#d0d0d0", outline="#000000", tags="object")
 
     def contains(self, x, y):
@@ -313,6 +592,54 @@ class Tree(DiagramObject):
     def get_bounds(self):
         r = 30 * self.scale
         return (self.x-r-20, self.y-r-20, self.x+r+20, self.y+r+20)
+
+
+class Pedestrian(DiagramObject):
+    def draw(self, canvas):
+        s = self.scale
+        outline = "#000000"
+        width = int(3 * s) if self.selected else int(2 * s)
+
+        angle_rad = math.radians(self.rotation)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        def rp(px, py):
+            rx = px * cos_a - py * sin_a + self.x
+            ry = px * sin_a + py * cos_a + self.y
+            return (rx, ry)
+
+        head_x, head_y = rp(0, -20 * s)
+        head_r = 8 * s
+        canvas.create_oval(head_x - head_r, head_y - head_r, head_x + head_r, head_y + head_r,
+                          fill="white", outline=outline, width=width, tags="object")
+
+        body_start = rp(0, -12 * s)
+        body_end = rp(0, 10 * s)
+        canvas.create_line(body_start[0], body_start[1], body_end[0], body_end[1],
+                          fill=outline, width=width, tags="object")
+
+        arm_start = rp(0, -5 * s)
+        left_arm = rp(-12 * s, 5 * s)
+        right_arm = rp(12 * s, 5 * s)
+        canvas.create_line(arm_start[0], arm_start[1], left_arm[0], left_arm[1],
+                          fill=outline, width=width, tags="object")
+        canvas.create_line(arm_start[0], arm_start[1], right_arm[0], right_arm[1],
+                          fill=outline, width=width, tags="object")
+
+        leg_start = rp(0, 10 * s)
+        left_leg = rp(-8 * s, 30 * s)
+        right_leg = rp(8 * s, 30 * s)
+        canvas.create_line(leg_start[0], leg_start[1], left_leg[0], left_leg[1],
+                          fill=outline, width=width, tags="object")
+        canvas.create_line(leg_start[0], leg_start[1], right_leg[0], right_leg[1],
+                          fill=outline, width=width, tags="object")
+
+    def contains(self, x, y):
+        return abs(x - self.x) < 20*self.scale and abs(y - self.y) < 35*self.scale
+
+    def get_bounds(self):
+        return (self.x-50, self.y-65, self.x+50, self.y+65)
 
 
 class TextLabel(DiagramObject):
@@ -333,6 +660,62 @@ class TextLabel(DiagramObject):
         return (self.x-w-30, self.y-h-30, self.x+w+30, self.y+h+30)
 
 
+class Compass(DiagramObject):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.base_size = 40
+
+    def draw(self, canvas):
+        size = self.base_size * self.scale
+        outline = "#000000"
+
+        canvas.create_oval(self.x - size, self.y - size, self.x + size, self.y + size,
+                          outline=outline, width=2, tags="object")
+
+        inner = size * 0.8
+        canvas.create_oval(self.x - inner, self.y - inner, self.x + inner, self.y + inner,
+                          fill="white", outline=outline, width=1, tags="object")
+
+        directions = [(0, "N", "#000000"), (90, "E", "#000000"),
+                     (180, "S", "#000000"), (270, "W", "#000000")]
+
+        for angle, label, color in directions:
+            angle_rad = math.radians(angle + self.rotation)
+
+            px = self.x + inner * 0.9 * math.sin(angle_rad)
+            py = self.y - inner * 0.9 * math.cos(angle_rad)
+
+            bx = self.x - inner * 0.3 * math.sin(angle_rad)
+            by = self.y + inner * 0.3 * math.cos(angle_rad)
+
+            perp_angle = angle_rad + math.pi / 2
+            s1x = bx + inner * 0.2 * math.cos(perp_angle)
+            s1y = by + inner * 0.2 * math.sin(perp_angle)
+            s2x = bx - inner * 0.2 * math.cos(perp_angle)
+            s2y = by - inner * 0.2 * math.sin(perp_angle)
+
+            fill_color = "#000000" if label == "N" else "#808080"
+            canvas.create_polygon([px, py, s1x, s1y, s2x, s2y],
+                                fill=fill_color, outline=outline, width=1, tags="object")
+
+            lx = self.x + (size + 15) * math.sin(angle_rad)
+            ly = self.y - (size + 15) * math.cos(angle_rad)
+            font_size = int(12 * self.scale)
+            canvas.create_text(lx, ly, text=label, font=("Arial", font_size, "bold"),
+                             fill=color, tags="object")
+
+        center_r = 3 * self.scale
+        canvas.create_oval(self.x - center_r, self.y - center_r, self.x + center_r, self.y + center_r,
+                          fill=outline, outline="", tags="object")
+
+    def contains(self, x, y):
+        return math.sqrt((x-self.x)**2 + (y-self.y)**2) < 40*self.scale
+
+    def get_bounds(self):
+        s = 40 * self.scale
+        return (self.x-s-40, self.y-s-40, self.x+s+40, self.y+s+40)
+
+
 class ControlButton:
     def __init__(self, x, y, button_type, size=25):
         self.x, self.y, self.button_type, self.size = x, y, button_type, size
@@ -344,14 +727,16 @@ class ControlButton:
         self.canvas_items = []
         colors = {"rotate_cw": "#3498db", "rotate_ccw": "#3498db", "scale_up": "#27ae60",
                  "scale_down": "#e67e22", "width_up": "#16a085", "width_down": "#d35400",
-                 "height_up": "#8e44ad", "height_down": "#c0392b"}
+                 "height_up": "#8e44ad", "height_down": "#c0392b", "curve_up": "#f39c12",
+                 "curve_down": "#e74c3c"}
         bg = colors.get(self.button_type, "#95a5a6")
         item = canvas.create_oval(self.x-self.size/2, self.y-self.size/2,
                                  self.x+self.size/2, self.y+self.size/2,
                                  fill=bg, outline="white", width=2, tags="control")
         self.canvas_items.append(item)
         icons = {"rotate_cw": "â†»", "rotate_ccw": "â†º", "scale_up": "+", "scale_down": "âˆ’",
-                "width_up": "â†”", "width_down": "â†”", "height_up": "â†•", "height_down": "â†•"}
+                "width_up": "â†”", "width_down": "â†”", "height_up": "â†•", "height_down": "â†•",
+                "curve_up": "âŒ’", "curve_down": "âŒ£"}
         item = canvas.create_text(self.x, self.y, text=icons.get(self.button_type, "?"),
                                  font=("Arial", 14, "bold"), fill="white", tags="control")
         self.canvas_items.append(item)
@@ -368,7 +753,7 @@ class AccidentReconstructorApp:
     def __init__(self, root):
         self.root = root
         self.root.title(f"Accident Reconstruction Tool v{AutoUpdater.CURRENT_VERSION}")
-        self.root.geometry("1200x800")
+        self.root.geometry("1280x800")
         self.objects, self.selected_object, self.control_buttons = [], None, []
         self.current_tool, self.drag_start = None, None
         self.setup_ui()
@@ -382,30 +767,129 @@ class AccidentReconstructorApp:
         help_menu.add_separator()
         help_menu.add_command(label=f"About (v{AutoUpdater.CURRENT_VERSION})", command=self.show_about)
 
-        tool_frame = tk.Frame(self.root, width=220, bg="#ecf0f1", relief=tk.RAISED, bd=2)
+        tool_frame = tk.Frame(self.root, width=240, bg="#ecf0f1", relief=tk.RAISED, bd=2)
         tool_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
         tool_frame.pack_propagate(False)
 
-        tk.Label(tool_frame, text="Accident Reconstruction", bg="#ecf0f1",
-                font=("Arial", 11, "bold")).pack(pady=5)
+        canvas_tools = tk.Canvas(tool_frame, bg="#ecf0f1", highlightthickness=0)
+        scrollbar = ttk.Scrollbar(tool_frame, orient="vertical", command=canvas_tools.yview)
+        scrollable_frame = tk.Frame(canvas_tools, bg="#ecf0f1")
 
-        tk.Label(tool_frame, text="VEHICLES", bg="#ecf0f1", font=("Arial", 9, "bold")).pack(pady=5)
-        for emoji, text, tool in [("ðŸš—", "Sedan", "car"), ("ðŸšš", "Pickup", "truck"),
-                                  ("ðŸš›", "18-Wheeler", "semi"), ("ðŸï¸", "Motorcycle", "motorcycle")]:
-            tk.Button(tool_frame, text=f"{emoji} {text}", command=lambda t=tool: self.set_tool(t),
-                     width=22, height=2, bg="#2c3e50", fg="white").pack(pady=2)
+        scrollable_frame.bind("<Configure>",
+            lambda e: canvas_tools.configure(scrollregion=canvas_tools.bbox("all")))
 
-        tk.Label(tool_frame, text="OTHER", bg="#ecf0f1", font=("Arial", 9, "bold")).pack(pady=5)
-        tk.Button(tool_frame, text="ðŸŒ³ Tree", command=lambda: self.set_tool("tree"),
-                 width=22, height=2, bg="#27ae60", fg="white").pack(pady=2)
-        tk.Button(tool_frame, text="ðŸ“ Text", command=lambda: self.set_tool("text"),
-                 width=22, height=2, bg="#8e44ad", fg="white").pack(pady=2)
+        canvas_tools.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_tools.configure(yscrollcommand=scrollbar.set)
 
-        tk.Label(tool_frame, text="ACTIONS", bg="#ecf0f1", font=("Arial", 9, "bold")).pack(pady=5)
-        tk.Button(tool_frame, text="ðŸ—‘ï¸ Delete", command=self.delete_selected,
-                 bg="#c0392b", fg="white", width=22, height=2).pack(pady=2)
-        tk.Button(tool_frame, text="ðŸ“„ Export PDF", command=self.export_pdf,
-                 bg="#27ae60", fg="white", width=22, height=2).pack(pady=2)
+        canvas_tools.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        tk.Label(scrollable_frame, text="Accident Reconstruction", bg="#ecf0f1",
+                font=("Arial", 12, "bold")).pack(pady=8)
+        tk.Label(scrollable_frame, text="Professional Edition", bg="#ecf0f1",
+                font=("Arial", 9), fg="#7f8c8d").pack(pady=2)
+
+        ttk.Separator(scrollable_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+
+        tk.Label(scrollable_frame, text="ðŸš— VEHICLES", bg="#ecf0f1",
+                font=("Arial", 10, "bold"), fg="#2c3e50").pack(pady=8)
+
+        vehicles = [
+            ("Sedan", "car", "#34495e"),
+            ("Pickup Truck", "truck", "#34495e"),
+            ("18-Wheeler", "semi", "#2c3e50"),
+            ("Motorcycle", "motorcycle", "#7f8c8d")
+        ]
+
+        for text, tool, color in vehicles:
+            tk.Button(scrollable_frame, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=24, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.RAISED, bd=2).pack(pady=3, padx=10)
+
+        ttk.Separator(scrollable_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+
+        tk.Label(scrollable_frame, text="ðŸ›£ï¸ ROADS", bg="#ecf0f1",
+                font=("Arial", 10, "bold"), fg="#2c3e50").pack(pady=8)
+
+        tk.Label(scrollable_frame, text="Road Type:", bg="#ecf0f1",
+                font=("Arial", 9)).pack(pady=3)
+        self.road_combo = ttk.Combobox(scrollable_frame,
+                                       values=["2-Lane Road", "4-Lane Road",
+                                              "4-Lane Highway", "Intersection"],
+                                       state="readonly", width=22, font=("Arial", 9))
+        self.road_combo.set("2-Lane Road")
+        self.road_combo.pack(pady=5, padx=10)
+
+        roads = [
+            ("Straight Road", "road", "#5d6d7e"),
+            ("Curved Road", "curved_road", "#34495e")
+        ]
+
+        for text, tool, color in roads:
+            tk.Button(scrollable_frame, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=24, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.RAISED, bd=2).pack(pady=3, padx=10)
+
+        ttk.Separator(scrollable_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+
+        tk.Label(scrollable_frame, text="âž¡ï¸ ARROWS", bg="#ecf0f1",
+                font=("Arial", 10, "bold"), fg="#2c3e50").pack(pady=8)
+
+        arrows = [
+            ("Straight Arrow", "arrow", "#2c3e50"),
+            ("Left Turn Arrow", "turn_left", "#34495e"),
+            ("Right Turn Arrow", "turn_right", "#34495e"),
+            ("Left Curve Arrow", "curve_left", "#5d6d7e"),
+            ("Right Curve Arrow", "curve_right", "#5d6d7e")
+        ]
+
+        for text, tool, color in arrows:
+            tk.Button(scrollable_frame, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=24, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.RAISED, bd=2).pack(pady=3, padx=10)
+
+        ttk.Separator(scrollable_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+
+        tk.Label(scrollable_frame, text="ðŸ“ SYMBOLS", bg="#ecf0f1",
+                font=("Arial", 10, "bold"), fg="#2c3e50").pack(pady=8)
+
+        symbols = [
+            ("ðŸŒ³ Tree", "tree", "#27ae60"),
+            ("ðŸš¶ Pedestrian", "pedestrian", "#95a5a6"),
+            ("ðŸ“ Text Label", "text", "#8e44ad"),
+            ("ðŸ§­ Compass", "compass", "#16a085")
+        ]
+
+        for text, tool, color in symbols:
+            tk.Button(scrollable_frame, text=text, command=lambda t=tool: self.set_tool(t),
+                     width=24, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.RAISED, bd=2).pack(pady=3, padx=10)
+
+        ttk.Separator(scrollable_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+
+        tk.Label(scrollable_frame, text="âš™ï¸ ACTIONS", bg="#ecf0f1",
+                font=("Arial", 10, "bold"), fg="#2c3e50").pack(pady=8)
+
+        actions = [
+            ("ðŸ—‘ï¸ Delete Selected", self.delete_selected, "#c0392b"),
+            ("ðŸ”„ Clear All", self.clear_all, "#e74c3c")
+        ]
+
+        for text, command, color in actions:
+            tk.Button(scrollable_frame, text=text, command=command,
+                     width=24, height=2, bg=color, fg="white",
+                     font=("Arial", 9, "bold"), relief=tk.RAISED, bd=2).pack(pady=3, padx=10)
+
+        ttk.Separator(scrollable_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+
+        tk.Label(scrollable_frame, text="ðŸ“„ EXPORT", bg="#ecf0f1",
+                font=("Arial", 10, "bold"), fg="#2c3e50").pack(pady=8)
+
+        tk.Button(scrollable_frame, text="ðŸ“„ Export to PDF", command=self.export_pdf,
+                 width=24, height=2, bg="#27ae60", fg="white",
+                 font=("Arial", 9, "bold"), relief=tk.RAISED, bd=2).pack(pady=3, padx=10)
+
+        tk.Label(scrollable_frame, text="", bg="#ecf0f1").pack(pady=10)
 
         canvas_frame = tk.Frame(self.root, bg="#bdc3c7")
         canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -415,17 +899,35 @@ class AccidentReconstructorApp:
         self.canvas.bind("<Button-1>", self.on_canvas_click)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
+        self.canvas.bind("<Button-3>", self.on_right_click)
         self.root.bind("<Delete>", lambda e: self.delete_selected())
+        self.root.bind("<r>", lambda e: self.rotate_selected())
+        self.root.bind("<R>", lambda e: self.rotate_selected(-15))
 
         status_frame = tk.Frame(self.root, bg="#34495e")
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        self.status_label = tk.Label(status_frame, text="Ready | Click buttons to add objects",
-                                     bd=1, relief=tk.SUNKEN, anchor=tk.W, bg="#ecf0f1")
-        self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.status_label = tk.Label(status_frame,
+                                     text="Ready | Select a tool and click on canvas to place objects",
+                                     bd=1, relief=tk.SUNKEN, anchor=tk.W, bg="#ecf0f1", fg="#2c3e50",
+                                     font=("Arial", 9))
+        self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2, pady=2)
+
+        hints_label = tk.Label(status_frame,
+                              text="ðŸ’¡ Tips: [R] Rotate | [Del] Delete | Right-click to rotate | Drag to move",
+                              bg="#34495e", fg="white", font=("Arial", 8), padx=10)
+        hints_label.pack(side=tk.RIGHT, pady=2)
 
     def set_tool(self, tool):
         self.current_tool = tool
-        self.status_label.config(text=f"Tool: {tool} - Click canvas to place")
+        tool_names = {
+            "car": "Sedan", "truck": "Pickup Truck", "semi": "18-Wheeler",
+            "motorcycle": "Motorcycle", "pedestrian": "Pedestrian", "tree": "Tree",
+            "road": "Straight Road", "curved_road": "Curved Road",
+            "arrow": "Straight Arrow", "turn_left": "Left Turn Arrow",
+            "turn_right": "Right Turn Arrow", "curve_left": "Left Curve Arrow",
+            "curve_right": "Right Curve Arrow", "text": "Text Label", "compass": "Compass"
+        }
+        self.status_label.config(text=f"Tool: {tool_names.get(tool, tool)} - Click canvas to place")
 
     def create_control_buttons(self):
         self.control_buttons = []
@@ -433,16 +935,32 @@ class AccidentReconstructorApp:
             return
         x1, y1, x2, y2 = self.selected_object.get_bounds()
         cx, cy = (x1+x2)/2, (y1+y2)/2
-        self.control_buttons = [
-            ControlButton(cx, y1-20, "rotate_ccw"),
-            ControlButton(x2+20, cy-15, "width_up"),
-            ControlButton(x2+20, cy+15, "scale_up"),
-            ControlButton(cx+15, y2+20, "height_up"),
-            ControlButton(cx-15, y2+20, "rotate_cw"),
-            ControlButton(x1-20, cy+15, "scale_down"),
-            ControlButton(x1-20, cy-15, "width_down"),
-            ControlButton(cx, y1-50, "height_down")
-        ]
+        has_curve = isinstance(self.selected_object, (CurvedRoad, CurveArrow))
+
+        if has_curve:
+            self.control_buttons = [
+                ControlButton(cx, y1-20, "rotate_ccw"),
+                ControlButton(x2+20, cy-25, "width_up"),
+                ControlButton(x2+20, cy, "scale_up"),
+                ControlButton(x2+20, cy+25, "curve_up"),
+                ControlButton(cx+15, y2+20, "height_up"),
+                ControlButton(cx-15, y2+20, "rotate_cw"),
+                ControlButton(x1-20, cy+25, "curve_down"),
+                ControlButton(x1-20, cy, "scale_down"),
+                ControlButton(x1-20, cy-25, "width_down"),
+                ControlButton(cx, y1-50, "height_down")
+            ]
+        else:
+            self.control_buttons = [
+                ControlButton(cx, y1-20, "rotate_ccw"),
+                ControlButton(x2+20, cy-15, "width_up"),
+                ControlButton(x2+20, cy+15, "scale_up"),
+                ControlButton(cx+15, y2+20, "height_up"),
+                ControlButton(cx-15, y2+20, "rotate_cw"),
+                ControlButton(x1-20, cy+15, "scale_down"),
+                ControlButton(x1-20, cy-15, "width_down"),
+                ControlButton(cx, y1-50, "height_down")
+            ]
 
     def draw_control_buttons(self):
         for button in self.control_buttons:
@@ -466,15 +984,18 @@ class AccidentReconstructorApp:
             self.drag_start = (event.x, event.y)
             self.create_control_buttons()
             self.redraw()
+            self.update_status()
         elif self.current_tool:
             self.add_object(event.x, event.y)
             self.current_tool = None
+            self.status_label.config(text="Ready")
         else:
             if self.selected_object:
                 self.selected_object.selected = False
                 self.selected_object = None
                 self.control_buttons = []
                 self.redraw()
+                self.status_label.config(text="Ready")
 
     def handle_control_button(self, button_type):
         if not self.selected_object:
@@ -487,12 +1008,15 @@ class AccidentReconstructorApp:
             "width_up": lambda: self.selected_object.width_up(),
             "width_down": lambda: self.selected_object.width_down(),
             "height_up": lambda: self.selected_object.height_up(),
-            "height_down": lambda: self.selected_object.height_down()
+            "height_down": lambda: self.selected_object.height_down(),
+            "curve_up": lambda: self.selected_object.curve_up(),
+            "curve_down": lambda: self.selected_object.curve_down()
         }
         if button_type in actions:
             actions[button_type]()
             self.create_control_buttons()
             self.redraw()
+            self.update_status()
 
     def on_canvas_drag(self, event):
         if self.selected_object and self.drag_start:
@@ -505,16 +1029,57 @@ class AccidentReconstructorApp:
     def on_canvas_release(self, event):
         self.drag_start = None
 
+    def on_right_click(self, event):
+        if self.selected_object:
+            self.selected_object.rotate(15)
+            self.create_control_buttons()
+            self.redraw()
+            self.update_status()
+
+    def rotate_selected(self, angle=15):
+        if self.selected_object:
+            self.selected_object.rotate(angle)
+            self.create_control_buttons()
+            self.redraw()
+            self.update_status()
+
+    def update_status(self):
+        if self.selected_object:
+            obj_type = type(self.selected_object).__name__
+            status_text = f"{obj_type} | Rot: {self.selected_object.rotation:.0f}Â° | Scale: {self.selected_object.scale:.2f}x"
+            if hasattr(self.selected_object, 'curve_amount') and isinstance(self.selected_object, (CurvedRoad, CurveArrow)):
+                status_text += f" | Curve: {self.selected_object.curve_amount:.1f}"
+            self.status_label.config(text=status_text)
+
     def add_object(self, x, y):
         obj = None
         if self.current_tool in ["car", "truck", "semi", "motorcycle"]:
             obj = Vehicle(x, y, self.current_tool)
         elif self.current_tool == "tree":
             obj = Tree(x, y)
+        elif self.current_tool == "pedestrian":
+            obj = Pedestrian(x, y)
+        elif self.current_tool == "road":
+            obj = Road(x, y, self.road_combo.get())
+        elif self.current_tool == "curved_road":
+            obj = CurvedRoad(x, y, self.road_combo.get())
+        elif self.current_tool == "arrow":
+            obj = Arrow(x, y)
+        elif self.current_tool == "turn_left":
+            obj = TurnArrow(x, y, "left")
+        elif self.current_tool == "turn_right":
+            obj = TurnArrow(x, y, "right")
+        elif self.current_tool == "curve_left":
+            obj = CurveArrow(x, y, "left")
+        elif self.current_tool == "curve_right":
+            obj = CurveArrow(x, y, "right")
         elif self.current_tool == "text":
             text = simpledialog.askstring("Text Label", "Enter text:")
             if text:
                 obj = TextLabel(x, y, text)
+        elif self.current_tool == "compass":
+            obj = Compass(x, y)
+
         if obj:
             self.objects.append(obj)
             if self.selected_object:
@@ -523,6 +1088,7 @@ class AccidentReconstructorApp:
             obj.selected = True
             self.create_control_buttons()
             self.redraw()
+            self.update_status()
 
     def delete_selected(self):
         if self.selected_object:
@@ -530,6 +1096,15 @@ class AccidentReconstructorApp:
             self.selected_object = None
             self.control_buttons = []
             self.redraw()
+            self.status_label.config(text="Object deleted")
+
+    def clear_all(self):
+        if messagebox.askyesno("Clear All", "Clear all objects from the diagram?"):
+            self.objects.clear()
+            self.selected_object = None
+            self.control_buttons = []
+            self.redraw()
+            self.status_label.config(text="Diagram cleared")
 
     def redraw(self):
         self.canvas.delete("object")
@@ -539,8 +1114,11 @@ class AccidentReconstructorApp:
         self.draw_control_buttons()
 
     def export_pdf(self):
-        filename = filedialog.asksaveasfilename(defaultextension=".pdf",
-                                               filetypes=[("PDF files", "*.pdf")])
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            initialfile=f"AccidentDiagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
         if filename:
             try:
                 c = pdf_canvas.Canvas(filename, pagesize=letter)
@@ -563,6 +1141,9 @@ Author: Galaxy AI
 Features:
 â€¢ 4 Realistic Vehicles
 â€¢ Tree Obstacles
+â€¢ 6 Road Types (with selector)
+â€¢ 5 Arrow Types
+â€¢ Pedestrians & Compass
 â€¢ Full Control System
 â€¢ PDF Export
 â€¢ Auto-Update Functionality"""
